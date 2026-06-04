@@ -1,0 +1,263 @@
+#--------------------------------------------------
+#----- 1. Веб страницы---ОСНОВНАЯ------------------
+#--------------------------------------------------
+
+import os
+import json
+from datetime import datetime
+from src.utils import get_month_range, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
+
+
+def analytics_view(date_param: str) -> dict:
+    """Генерирует данные для ответа на основе переданной даты."""
+    if not date_param:
+        return {"error": "Параметр 'date' обязателен"}
+
+    try:
+        start_date, end_date = get_month_range(date_param)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    # Здесь будет ваша фильтрация данных из data/operations.xlsx через pandas/openpyxl
+    # payload = filter_excel_data(start_date, end_date)
+
+    return {
+        "status": "success",
+        "input_date": date_param,
+        "range_start": start_date.strftime("%d.%m.%Y"),
+        "range_end": end_date.strftime("%d.%m.%Y"),
+        "payload": []  # Ваши данные из Excel
+    }
+
+#--------------------------------------------------
+#----- 3. Веб страницы---ОСНОВНАЯ--API-------------
+#--------------------------------------------------
+
+import os
+import json
+from datetime import datetime
+from src.utils import get_month_range, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
+
+# Путь к файлу настроек, который лежит в корне (на уровень выше, чем папка src)
+SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'user_settings.json')
+
+
+def generate_json_response(date_str: str) -> dict:
+    """Основная функция для генерации JSON-ответа (словаря)."""
+    if not date_str:
+        return {"error": "Параметр даты обязателен"}
+
+    try:
+        # 1. Считаем даты (из utils.py)
+        start_date, end_date = get_month_range(date_str)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    # 2. Загружаем настройки (из utils.py)
+    currencies, stocks = load_user_settings(SETTINGS_FILE)
+
+    # 3. Запрашиваем внешние API (из services.py)
+    currency_data = get_currency_rates(currencies)
+    stock_data = get_stock_prices(stocks)
+
+    # 4. Формируем структуру ответа
+    return {
+        "status": "success",
+        "analysis_period": {
+            "start": start_date.strftime("%d.%m.%Y"),
+            "end": end_date.strftime("%d.%m.%Y")
+        },
+        "currencies_exchange_rub": currency_data,
+        "stock_prices_usd": stock_data
+    }
+
+#--------------------------------------------------
+#----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
+#--------------------------------------------------
+
+import os
+import json
+import logging
+import pandas as pd
+from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+# Пути к файлам относительно структуры проекта
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
+EXCEL_FILE = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
+
+
+def generate_main_page_json(date_str: str) -> dict:
+    """Главная функция генерации JSON-ответа для страницы 'Главная'."""
+    logger.info(f"Начало генерации отчета для даты: {date_str}")
+
+    try:
+        start_date, end_date = parse_incoming_datetime(date_str)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    greeting = get_greeting(end_date)
+
+    # --- БЛОК PANDAS: Анализ Excel ---
+    cards_list = []
+    top_transactions = []
+
+    if os.path.exists(EXCEL_FILE):
+        try:
+            logger.info(f"Чтение файла данных: {EXCEL_FILE}")
+            # Читаем Excel, преобразуем колонку с датой в тип datetime
+            df = pd.read_excel(EXCEL_FILE)
+            df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+
+            # Фильтруем данные: с 1-го числа месяца по входящую дату включительно
+            mask = (df['Дата операции'] >= start_date) & (df['Дата operations'] <= end_date)
+            df_filtered = df[mask].copy()
+
+            # 1. Расчет по картам (только расходы/платежи, обычно это отрицательные или целевые суммы)
+            # Предположим, расходы в колонке 'Сумма платежа' идут со знаком минус или фильтруются по типу
+            # Для примера берем модуль расходов, если они отрицательные, либо просто фильтруем расходы:
+            df_expenses = df_filtered[df_filtered['Сумма платежа'] < 0].copy()
+            df_expenses['Сумма платежа'] = df_expenses['Сумма платежа'].abs()
+
+            if not df_expenses.empty and 'Номер карты' in df_expenses.columns:
+                # Группируем по картам
+                grouped = df_expenses.groupby('Номер карты')['Сумма платежа'].sum().reset_index()
+                for _, row in grouped.iterrows():
+                    card_num = str(row['Номер карты']).strip()
+                    if card_num and card_num != 'nan':
+                        # Берем последние 4 знака (удаляем звездочки если они есть)
+                        last_4 = card_num[-4:] if len(card_num) >= 4 else card_num
+                        total_spent = round(float(row['Сумма платежа']), 2)
+                        # Кешбэк: 1 рубль на каждые 100 рублей расходов
+                        cashback = round(total_spent / 100, 2)
+
+                        cards_list.append({
+                            "last_digits": last_4,
+                            "total_spent": total_spent,
+                            "cashback": cashback
+                        })
+
+            # 2. Топ-5 транзакций по сумме платежа (по модулю или по абсолютной величине расходов)
+            df_filtered['Abs_Amount'] = df_filtered['Сумма платежа'].abs()
+            df_top = df_filtered.sort_values(by='Abs_Amount', ascending=False).head(5)
+
+            for _, row in df_top.iterrows():
+                top_transactions.append({
+                    "date": row['Дата операции'].strftime("%d.%m.%Y"),
+                    "amount": round(float(row['Сумма платежа']), 2),
+                    "category": str(row.get('Категория', 'Без категории')),
+                    "description": str(row.get('Описание', ''))
+                })
+
+        except Exception as e:
+            logger.error(f"Ошибка обработки Excel: {e}")
+    else:
+        logger.warning(f"Файл {EXCEL_FILE} не найден. Payload пустой.")
+
+    # --- БЛОК API: Валюты и Акции ---
+    currencies, stocks = load_user_settings(SETTINGS_FILE)
+    currency_rates = get_currency_rates(currencies)
+    stock_prices = get_stock_prices(stocks)
+
+    # --- Сборка финального JSON-ответа ---
+    response = {
+        "greeting": greeting,
+        "cards": cards_list,
+        "top_transactions": top_transactions,
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices
+    }
+
+    logger.info("Генерация отчета успешно завершена.")
+    return response
+
+#--------------------------------------------------
+#----- 14. main------------------------------------
+#--------------------------------------------------
+
+import os
+import logging
+import pandas as pd
+from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
+
+logger = logging.getLogger(__name__)
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
+EXCEL_FILE = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
+
+
+def generate_main_page_data(date_str: str) -> dict:
+    """Формирует данные для Главной страницы согласно описанию колонок."""
+    try:
+        start_date, end_date = parse_incoming_datetime(date_str)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    greeting = get_greeting(end_date)
+    cards_list = []
+    top_transactions = []
+
+    if os.path.exists(EXCEL_FILE):
+        try:
+            df = pd.read_excel(EXCEL_FILE)
+            df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+
+            # Фильтруем успешные транзакции за период
+            mask = (df['Дата операции'] >= start_date) & (df['Дата операции'] <= end_date) & (df['Статус'] == 'OK')
+            df_filtered = df[mask].copy()
+
+            # 1. Анализ карт (Расходы — Сумма платежа < 0)
+            df_expenses = df_filtered[df_filtered['Сумма платежа'] < 0].copy()
+            if not df_expenses.empty and 'Номер карты' in df_expenses.columns:
+                df_expenses['Сумма платежа_abs'] = df_expenses['Сумма платежа'].abs()
+                grouped = df_expenses.groupby('Номер карты')['Сумма платежа_abs'].sum().reset_index()
+
+                for _, row in grouped.iterrows():
+                    card_num = str(row['Номер карты']).strip()
+                    if card_num and card_num != 'nan':
+                        last_4 = card_num[-4:] if len(card_num) >= 4 else card_num
+                        total_spent = round(
+                            float(row['Сумма breakage_abs' if 'Сумма breakage_abs' in row else 'Сумма платежа_abs']), 2)
+                        # Кешбэк по ТЗ: 1 рубль на каждые 100 рублей расходов
+                        cashback = round(total_spent / 100, 2)
+                        cards_list.append({
+                            "last_digits": last_4,
+                            "total_spent": total_spent,
+                            "cashback": cashback
+                        })
+
+            # 2. Ровно 5 транзакций, отсортированных по убыванию поля amount
+            # По ТЗ поле называется 'amount', данные берем из 'Сумма операции' или 'Сумма платежа'
+            df_top = df_filtered.sort_values(by='Сумма операции', ascending=False).head(5)
+            for _, row in df_top.iterrows():
+                top_transactions.append({
+                    "date": row['Дата операции'].strftime("%d.%m.%Y"),
+                    "amount": round(float(row['Сумма операции']), 2),
+                    "category": str(row.get('Категория', 'Без категории')),
+                    "description": str(row.get('Описание', ''))
+                })
+        except Exception as e:
+            logger.error(f"Ошибка парсинга Excel: {e}")
+
+    # 3. Валюты и акции
+    currencies, stocks = load_user_settings(SETTINGS_FILE)
+    currency_rates = get_currency_rates(currencies)
+    stock_prices = get_stock_prices(stocks)
+
+    return {
+        "greeting": greeting,
+        "cards": cards_list,
+        "top_transactions": top_transactions,
+        "currency_rates": currency_rates,
+        "stock_prices": stock_prices
+    }
+
