@@ -15,7 +15,7 @@ from unittest.mock import mock_open, patch
 import pandas as pd
 import pytest
 
-from src.excel_csv_reader import transactions_csv, transactions_excel
+from src.DZ.excel_csv_reader import transactions_csv, transactions_excel
 
 
 @patch("csv.DictReader")

@@ -1,6 +1,6 @@
 import pytest
 
-from src.widget import get_date, mask_account_card
+from src.DZ.widget import get_date, mask_account_card
 
 
 # параметризация теста все пишется в модуле test_... (conftest.py только для фикстур)

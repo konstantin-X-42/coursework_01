@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from src.decorators import log  # импортируем функцию log из модуля decorators
+from src.DZ.decorators import log  # импортируем функцию log из модуля decorators
 
 """
 КАМАНДА ЗАПУСКАЕТ ТЕСТ в консоль из МОДУЛЯ test_decorators

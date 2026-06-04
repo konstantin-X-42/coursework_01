@@ -1,6 +1,6 @@
 import pytest
 
-from src.processing import filter_by_state, process_bank_operations, process_bank_search, sort_by_date
+from src.DZ.processing import filter_by_state, process_bank_operations, process_bank_search, sort_by_date
 
 
 def test_correct_get_date_executed(date_list_executed):

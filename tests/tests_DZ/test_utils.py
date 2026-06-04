@@ -1,6 +1,6 @@
 from unittest.mock import mock_open, patch  # импортируем декоратор патч и модуль мок
 
-from src.utils import get_transactions  # путь к модулю
+from src.DZ.utils import get_transactions  # путь к модулю
 
 """
 показать подробный отчет (название каждого теста и статус).

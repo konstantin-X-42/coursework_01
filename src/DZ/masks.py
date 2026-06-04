@@ -1,7 +1,7 @@
 import logging
 
 # Импортируем функцию настройки логгера из файла log_config абсолютный путь
-from src.log_config import module_logger
+from src.DZ.log_config import module_logger
 
 # Инициализируем логгер
 log = module_logger(

@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # Собираем абсолютный путь к файлу внутри папки: data_13_2_10
     # Модуль excel_csv_reader.py лежит в src/, папка data_13_2_10 в корне проекта, поднимаемся на один уровень вверх:
-    path = os.path.abspath(os.path.join(current_dir, "..", "data_13_2_10", "transactions.csv"))
+    path = os.path.abspath(os.path.join(current_dir, "../..", "data_13_2_10", "transactions.csv"))
 
     # print(transactions_csv(path))
 
@@ -79,6 +79,6 @@ if __name__ == "__main__":
 
     # Собираем абсолютный путь к файлу внутри папки: data_13_2_10
     # Модуль excel_csv_reader.py лежит в src/, папка data_13_2_10 в корне проекта, поднимаемся на один уровень вверх:
-    path = os.path.abspath(os.path.join(current_dir, "..", "data_13_2_10", "transactions_excel.xlsx"))
+    path = os.path.abspath(os.path.join(current_dir, "../..", "data_13_2_10", "transactions_excel.xlsx"))
 
     print(transactions_excel(path))

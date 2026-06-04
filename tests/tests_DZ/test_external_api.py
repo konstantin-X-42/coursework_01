@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch  # импортируем patch — �
 
 import requests
 
-from src.external_api import conversion_rub  # Импортируем тестируемую функцию
+from src.DZ.external_api import conversion_rub  # Импортируем тестируемую функцию
 
 """
 показать подробный отчет (название каждого теста и статус).

@@ -1,4 +1,4 @@
-from src.masks import get_mask_account, get_mask_card_number
+from src.DZ.masks import get_mask_account, get_mask_card_number
 
 
 def test_correct_get_mask_card_number(number_card):

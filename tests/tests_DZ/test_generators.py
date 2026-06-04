@@ -1,6 +1,6 @@
 import pytest
 
-from src.generators import card_number_generator, filter_by_currency, transaction_descriptions
+from src.DZ.generators import card_number_generator, filter_by_currency, transaction_descriptions
 
 # Функция принимает 'Any' (что угодно)
 # возвращает 'Iterator' (объект для перебора)
