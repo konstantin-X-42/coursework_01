@@ -55,7 +55,7 @@ def main():
     choice = input("\nВыберите действие (1-5): ").strip()
 
     # Путь к исходной таблице для сервисов поиска
-    excel_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'operations.xlsx')
+    excel_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '../data', 'operations.xlsx')
 
     # Загружаем сырые данные из Excel в список словарей, если файл существует
     raw_data = []

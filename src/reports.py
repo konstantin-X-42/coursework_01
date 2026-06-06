@@ -12,7 +12,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 # Папка для сохранения отчетов по умолчанию в корне проекта
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'reports')
+REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), '../data', 'reports')
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 

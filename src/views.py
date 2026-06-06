@@ -1,44 +1,120 @@
+import os
+import json
+import logging
+import pandas as pd
+from datetime import datetime
+from src.utils import get_month_range, load_user_settings, get_greeting, parse_incoming_datetime
+from src.services import get_currency_rates, get_stock_prices
+
 #--------------------------------------------------
 #----- 1. Веб страницы---ОСНОВНАЯ------------------
 #--------------------------------------------------
+# запуск функций в модуле
+# python -m src.views
+#--------------------------------------------------
 
-import os
-import json
-from datetime import datetime
-from src.utils import get_month_range, load_user_settings
-from src.services import get_currency_rates, get_stock_prices
+# Директория, где лежит текущий файл (src)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Поднимаемся на уровень выше в корень проекта и заходим в папку data
+EXCEL_PATH = os.path.join(CURRENT_DIR, "../data", "operations.xlsx")
 
 
 def analytics_view(date_param: str) -> dict:
-    """Генерирует данные для ответа на основе переданной даты."""
+    """Генерирует данные для ответа на основе переданной даты"""
+    # Лог старта функции
+    logging.info(f"Начало вызова analytics_view с параметром date_param='{date_param}'")
+
     if not date_param:
+        logging.warning("Параметр date_param отсутствует или пустой")
         return {"error": "Параметр 'date' обязателен"}
 
     try:
         start_date, end_date = get_month_range(date_param)
+        logging.info(
+            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}")
     except ValueError as e:
+        logging.error(f"Ошибка вычисления диапазона дат для значения '{date_param}': {e}")
         return {"error": str(e)}
 
-    # Здесь будет ваша фильтрация данных из data/operations.xlsx через pandas/openpyxl
-    # payload = filter_excel_data(start_date, end_date)
+    # Проверка физического наличия Excel-файла
+    if not os.path.exists(EXCEL_PATH):
+        logging.error(f"Файл Excel не найден по пути: {os.path.abspath(EXCEL_PATH)}")
+        return {"error": f"Файл не найден по пути: {os.path.abspath(EXCEL_PATH)}"}
 
+    try:
+        logging.info(f"Чтение данных из файла: {EXCEL_PATH}")
+        # Чтение таблицы (требуется установленный openpyxl)
+        df = pd.read_excel(EXCEL_PATH)
+
+        # Конвертируем колонку дат. dayfirst=True корректно парсит российский формат
+        df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+
+        # Настраиваем правую границу, чтобы захватить весь последний день месяца до 23:59:59
+        end_date_full = pd.to_datetime(end_date).replace(hour=23, minute=59, second=59)
+
+        # Фильтрация по диапазону дат
+        filtered_df = df[(df['Дата операции'] >= pd.to_datetime(start_date)) &
+                         (df['Дата операции'] <= end_date_full)]
+
+        # Сортировка от новых к старым
+        filtered_df = filtered_df.sort_values(by='Дата операции', ascending=False)
+
+        # Превращаем даты обратно в строковый формат для JSON-ответа
+        if not filtered_df.empty:
+            filtered_df['Дата операции'] = filtered_df['Дата операции'].dt.strftime("%d.%m.%Y %H:%M:%S")
+
+        # Заменяем пустые ячейки (NaN) на None, иначе json.dumps() выдаст ошибку float('NaN')
+        filtered_df = filtered_df.replace({pd.NA: None, float('nan'): None})
+
+        # Преобразуем DataFrame в список словарей
+        payload = filtered_df.to_dict(orient="records")
+
+        # Лог успешного завершения обработки данных
+        logging.info(f"Данные успешно отфильтрованы. Найдено операций за период: {len(payload)}")
+
+    except Exception as e:
+        logging.error(f"Критическая ошибка при обработке Excel: {e}", exc_info=True)
+        return {"error": "Внутренняя ошибка обработки данных"}
+
+    logging.info("Функция analytics_view успешно завершила работу")
     return {
         "status": "success",
         "input_date": date_param,
         "range_start": start_date.strftime("%d.%m.%Y"),
         "range_end": end_date.strftime("%d.%m.%Y"),
-        "payload": []  # Ваши данные из Excel
+        "payload": payload
     }
+
+# --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+# --  --  -- ЗАПУСК ФУНКЦИИ --  analytics_view()  --  --  --  --  --  --  --  --
+# --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+
+if __name__ == "__main__":
+    # Настройка логирования, чтобы видеть возможные ошибки в консоли
+    logging.basicConfig(level=logging.INFO)
+
+    # Тестовая дата в формате, который ожидает ваша функция get_month_range
+    # (обычно это "YYYY-MM" или "DD.MM.YYYY" — укажите нужный вам формат)
+    test_date = "15.12.2021"
+
+    print(f"--- Запуск проверки функции analytics_view для даты: {test_date} ---")
+
+    # Вызов функции
+    result = analytics_view(test_date)
+
+    # Красивый вывод результата в формате JSON
+    print(json.dumps(result, indent=4, ensure_ascii=False))
+
 
 #--------------------------------------------------
 #----- 3. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
 
-import os
-import json
-from datetime import datetime
-from src.utils import get_month_range, load_user_settings
-from src.services import get_currency_rates, get_stock_prices
+# import os
+# import json
+# from datetime import datetime
+# from src.utils import get_month_range, load_user_settings
+# from src.services import get_currency_rates, get_stock_prices
 
 # Путь к файлу настроек, который лежит в корне (на уровень выше, чем папка src)
 SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'user_settings.json')
@@ -77,12 +153,12 @@ def generate_json_response(date_str: str) -> dict:
 #----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
 #--------------------------------------------------
 
-import os
-import json
-import logging
-import pandas as pd
-from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
-from src.services import get_currency_rates, get_stock_prices
+# import os
+# import json
+# import logging
+# import pandas as pd
+# from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
+# from src.services import get_currency_rates, get_stock_prices
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -91,7 +167,7 @@ logger = logging.getLogger(__name__)
 # Пути к файлам относительно структуры проекта
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
-EXCEL_FILE = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
+EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
 
 
 def generate_main_page_json(date_str: str) -> dict:
@@ -182,17 +258,17 @@ def generate_main_page_json(date_str: str) -> dict:
 #----- 14. main------------------------------------
 #--------------------------------------------------
 
-import os
-import logging
-import pandas as pd
-from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
-from src.services import get_currency_rates, get_stock_prices
+# import os
+# import logging
+# import pandas as pd
+# from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
+# from src.services import get_currency_rates, get_stock_prices
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
-EXCEL_FILE = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
+EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
 
 
 def generate_main_page_data(date_str: str) -> dict:
