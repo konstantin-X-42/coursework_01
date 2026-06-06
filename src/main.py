@@ -1,16 +1,45 @@
 #--------------------------------------------------
 #----- 2. Веб страницы---ОСНОВНАЯ------------------
 #--------------------------------------------------
+# установка библиотеки uvicorn - выполняет роль веб-сервера
+# poetry add uvicorn
+
+# установка библиотеки FastAPI - фреймворк для создания HTTP API на Python
+# poetry add fastapi
+
+# запуск сервера
+# poetry run uvicorn src.main:app --reload
+# остановка сервера
+# ctrl + c
+
+# запрос в браузер
+# http://127.0.0.1:8000/docs
+# нажать Try it out >>> ввести дату, имеющуюся в operations.xlsx
+
 
 from fastapi import FastAPI, HTTPException
 from src.views import analytics_view
 
 app = FastAPI()
 
-
 @app.get("/analytics")
 def get_analytics(date: str = None):
     result = analytics_view(date)
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
+#--------------------------------------------------
+#----- 3. Веб страницы---ОСНОВНАЯ--API-------------
+#--------------------------------------------------
+from src.views import generate_json_response
+
+
+@app.get("/services")
+def get_services(date: str = None):
+    """Эндпоинт для получения курсов валют и стоимости акций"""
+    result = generate_json_response(date)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])

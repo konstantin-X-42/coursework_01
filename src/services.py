@@ -2,82 +2,157 @@
 #----- 5. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
 
+import os
 import requests
+import logging
 
-def get_currency_rates(currencies: list[str]) -> dict:
-    """Запрос курсов валют."""
-    if not currencies: return {}
-    url = "https://er-api.com"
-    try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            rates = response.json().get("rates", {})
-            return {cur: round(1 / rates[cur], 2) for cur in currencies if cur in rates}
-    except Exception:
-        pass
-    return {cur: "Данные недоступны" for cur in currencies}
+logger = logging.getLogger(__name__)
 
-def get_stock_prices(stocks: list[str]) -> dict:
-    """Запрос цен акций."""
-    if not stocks: return {}
-    tickers = ",".join(stocks)
-    url = f"https://yahoo.com{tickers}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
+
+def get_currency_rates(currencies: list[str], apilayer_key: str = None) -> list:
+    """
+    Получает актуальные курсы валют к рублю через API Fixer на маркетплейсе APILayer.
+    """
+    if not currencies:
+        return []
+
+    # Приоритет аргументу, если он "demo" или пустой — пробуем взять из .env
+    api_key = apilayer_key if apilayer_key and apilayer_key != "demo" else os.getenv("CURRENCY_API_KEY")
+
+    if not api_key:
+        logger.error("Критическая ошибка: API-ключ для APILayer не предоставлен и не найден в .env!")
+        return _get_mock_currency_rates(currencies)
+
+    # ПРАВИЛЬНЫЙ URL: используем эндпоинт fixer и явно задаем базовую валюту RUB
+    # (Убедитесь, что ваш тарифный план на APILayer позволяет менять base на RUB)
+    url = "https://apilayer.com"
+
+    # Формируем список валют для запроса через запятую, например: "USD,EUR"
+    symbols = ",".join(currencies)
+    params = {
+        "base": "RUB",
+        "symbols": symbols
+    }
+
+    rates_list = []
+
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        headers = {
+            "apikey": api_key,
+            "User-Agent": "Mozilla/5.0"
+        }
+        # Передаем url, заголовки и параметры (base и symbols)
+        response = requests.get(url, headers=headers, params=params, timeout=5)
+
         if response.status_code == 200:
-            results = response.json().get("quoteResponse", {}).get("result", [])
-            return {item["symbol"]: item.get("regularMarketPrice") for item in results}
-    except Exception:
-        pass
-    return {stock: "Данные недоступны" for stock in stocks}
+            data = response.json()
+
+            # API Fixer при base=RUB возвращает rates вида: {"USD": 0.011, "EUR": 0.010}
+            rates = data.get("rates", {})
+
+            for cur in currencies:
+                if cur in rates and rates[cur] != 0:
+                    # Так как база RUB, то 1 единица валюты cur = 1 / rate рублей
+                    rate_to_rub = round(1 / rates[cur], 2)
+                    rates_list.append({
+                        "currency": cur,
+                        "rate": rate_to_rub
+                    })
+                    logger.info(f"Успешно получен курс APILayer для {cur}: {rate_to_rub} руб.")
+
+            if rates_list:
+                return rates_list
+        else:
+            logger.error(f"APILayer вернул ошибку {response.status_code}: {response.text}")
+
+    except Exception as e:
+        logger.error(f"Ошибка получения курсов валют через APILayer: {e}")
+
+    # Если что-то пошло не так, возвращаем заглушки
+    return _get_mock_currency_rates(currencies)
+
+
+def _get_mock_currency_rates(currencies: list[str]) -> list:
+    """Вспомогательная функция для выдачи резервных данных валют"""
+    logger.warning("Используются резервные курсы валют (офлайн-режим)")
+    mock_rates = {"USD": 91.50, "EUR": 98.20}
+    return [{"currency": cur, "rate": mock_rates.get(cur, 85.00)} for cur in currencies]
+
+
+def get_stock_prices(stocks: list[str]) -> list:
+    """Запрос текущих цен акций в USD через бесплатный финансовый API."""
+    if not stocks:
+        return []
+
+    prices_list = []
+    try:
+        for stock in stocks:
+            url = f"https://financialmodelingprep.com{stock}?apikey=demo"
+            response = requests.get(url, timeout=5)
+
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0:
+                    stock_info = data
+                    price = round(float(stock_info.get("price", 0)), 2)
+                    prices_list.append({"stock": stock, "price": price})
+
+        if prices_list:
+            return prices_list
+
+    except Exception as e:
+        logger.error(f"Ошибка получения цен акций через API: {e}")
+
+    logger.warning("Используются резервные стоимости акций (офлайн-режим)")
+    mock_prices = {"AAPL": 175.30, "AMZN": 180.50, "GOOGL": 152.10, "MSFT": 415.20, "TSLA": 170.80}
+    return [{"stock": stock, "price": mock_prices.get(stock, 100.00)} for stock in stocks]
 
 #--------------------------------------------------
 #----- 7. Веб страницы---доп.ГЛАВНАЯ---------------
 #--------------------------------------------------
 
-import logging
-import requests
-
-logger = logging.getLogger(__name__)
-
-def get_currency_rates(currencies: list[str]) -> list[dict]:
-    """Получает курсы валют относительно RUB в виде списка словарей."""
-    if not currencies:
-        return []
-    url = "https://er-api.com"
-    try:
-        logger.info(f"Запрос курсов валют для: {currencies}")
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            rates = response.json().get("rates", {})
-            return [
-                {"currency": cur, "rate": round(1 / rates[cur], 2)}
-                for cur in currencies if cur in rates
-            ]
-    except Exception as e:
-        logger.error(f"Ошибка при получении курсов валют: {e}")
-    return [{"currency": cur, "rate": "Данные недоступны"} for cur in currencies]
-
-def get_stock_prices(stocks: list[str]) -> list[dict]:
-    """Получает цены акций с Yahoo Finance в виде списка словарей."""
-    if not stocks:
-        return []
-    tickers = ",".join(stocks)
-    url = f"https://yahoo.com{tickers}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        logger.info(f"Запрос цен акций для: {stocks}")
-        response = requests.get(url, headers=headers, timeout=5)
-        if response.status_code == 200:
-            results = response.json().get("quoteResponse", {}).get("result", [])
-            return [
-                {"stock": item["symbol"], "price": item.get("regularMarketPrice")}
-                for item in results
-            ]
-    except Exception as e:
-        logger.error(f"Ошибка при получении цен акций: {e}")
-    return [{"stock": stock, "price": "Данные недоступны"} for stock in stocks]
+# import logging
+# import requests
+#
+# logger = logging.getLogger(__name__)
+#
+# def get_currency_rates(currencies: list[str]) -> list[dict]:
+#     """Получает курсы валют относительно RUB в виде списка словарей."""
+#     if not currencies:
+#         return []
+#     url = "https://er-api.com"
+#     try:
+#         logger.info(f"Запрос курсов валют для: {currencies}")
+#         response = requests.get(url, timeout=5)
+#         if response.status_code == 200:
+#             rates = response.json().get("rates", {})
+#             return [
+#                 {"currency": cur, "rate": round(1 / rates[cur], 2)}
+#                 for cur in currencies if cur in rates
+#             ]
+#     except Exception as e:
+#         logger.error(f"Ошибка при получении курсов валют: {e}")
+#     return [{"currency": cur, "rate": "Данные недоступны"} for cur in currencies]
+#
+# def get_stock_prices(stocks: list[str]) -> list[dict]:
+#     """Получает цены акций с Yahoo Finance в виде списка словарей."""
+#     if not stocks:
+#         return []
+#     tickers = ",".join(stocks)
+#     url = f"https://yahoo.com{tickers}"
+#     headers = {'User-Agent': 'Mozilla/5.0'}
+#     try:
+#         logger.info(f"Запрос цен акций для: {stocks}")
+#         response = requests.get(url, headers=headers, timeout=5)
+#         if response.status_code == 200:
+#             results = response.json().get("quoteResponse", {}).get("result", [])
+#             return [
+#                 {"stock": item["symbol"], "price": item.get("regularMarketPrice")}
+#                 for item in results
+#             ]
+#     except Exception as e:
+#         logger.error(f"Ошибка при получении цен акций: {e}")
+#     return [{"stock": stock, "price": "Данные недоступны"} for stock in stocks]
 
 #--------------------------------------------------
 #----- 9. Сервисы---ОСНОВНАЯ-----------------------

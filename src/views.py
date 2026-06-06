@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     print(f"--- Запуск проверки функции analytics_view для даты: {test_date} ---")
 
-    # Вызов функции
+    # Вызываем функцию
     result = analytics_view(test_date)
 
     # Красивый вывод результата в формате JSON
@@ -110,35 +110,77 @@ if __name__ == "__main__":
 #----- 3. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
 
-# import os
-# import json
-# from datetime import datetime
-# from src.utils import get_month_range, load_user_settings
-# from src.services import get_currency_rates, get_stock_prices
+import os
+import json
+import logging
+from datetime import datetime
+from src.utils import get_month_range, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
 
-# Путь к файлу настроек, который лежит в корне (на уровень выше, чем папка src)
-SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'user_settings.json')
+# Автоматически определяем директорию текущего файла, чтобы избежать NameError
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Путь к файлу настроек на уровень выше
+SETTINGS_FILE = os.path.abspath(os.path.join(CURRENT_DIR, "..", "user_settings.json"))
 
 
 def generate_json_response(date_str: str) -> dict:
-    """Основная функция для генерации JSON-ответа (словаря)."""
+    """Генерирует данные по курсам валют и акциям на основе настроек пользователя"""
+
+    logging.info(f"Начало вызова generate_json_response с параметром date_str='{date_str}'")
+
     if not date_str:
+        logging.warning("Параметр date_str отсутствует или пустой")
         return {"error": "Параметр даты обязателен"}
 
+    # 1. Расчет диапазона дат
     try:
-        # 1. Считаем даты (из utils.py)
         start_date, end_date = get_month_range(date_str)
+        logging.info(
+            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}")
     except ValueError as e:
+        logging.error(f"Ошибка вычисления диапазона дат для значения '{date_str}': {e}")
         return {"error": str(e)}
 
-    # 2. Загружаем настройки (из utils.py)
-    currencies, stocks = load_user_settings(SETTINGS_FILE)
+    # 2. Проверка физического наличия файла настроек
+    if not os.path.exists(SETTINGS_FILE):
+        logging.error(f"Файл настроек не найден по пути: {SETTINGS_FILE}")
+        return {"error": f"Файл настроек не найден по пути: {SETTINGS_FILE}"}
 
-    # 3. Запрашиваем внешние API (из services.py)
-    currency_data = get_currency_rates(currencies)
-    stock_data = get_stock_prices(stocks)
+    # 3. Загрузка настроек и API-ключа (все операции с файлом в одном блоке)
+    try:
+        # Извлекаем основные настройки через вашу утилиту
+        currencies, stocks = load_user_settings(SETTINGS_FILE)
 
-    # 4. Формируем структуру ответа
+        # Читаем ключ из этого же файла без повторного вызова os.path
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            settings_data = json.load(f)
+        apilayer_key = settings_data.get("apilayer_key", "demo")
+
+        logging.info(f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}")
+    except json.JSONDecodeError as e:
+        logging.error(f"Некорректный формат JSON в файле настроек: {e}")
+        return {"error": "Файл настроек поврежден (неверный JSON)"}
+    except Exception as e:
+        logging.error(f"Ошибка загрузки пользовательских настроек: {e}")
+        return {"error": f"Ошибка загрузки пользовательских настроек: {e}"}
+
+    # 4. Запрос внешних API с защитой от сбоев
+    try:
+        currency_data = get_currency_rates(currencies, apilayer_key)
+    except Exception as e:
+        logging.error(f"Ошибка получения курсов валют: {e}")
+        currency_data = []
+
+    try:
+        stock_data = get_stock_prices(stocks)
+    except Exception as e:
+        logging.error(f"Критический сбой функции get_stock_prices: {e}")
+        stock_data = []
+
+    logging.info("Функция generate_json_response успешно завершила работу")
+
+    # 5. Формирование структуры ответа
     return {
         "status": "success",
         "analysis_period": {
@@ -148,6 +190,23 @@ def generate_json_response(date_str: str) -> dict:
         "currencies_exchange_rub": currency_data,
         "stock_prices_usd": stock_data
     }
+
+# --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+# --  --  -- ЗАПУСК ФУНКЦИИ --  generate_json_response()  --  --  --  --  --  --
+# --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
+
+if __name__ == "__main__":
+    # Включаем вывод логов в консоль терминала
+    logging.basicConfig(level=logging.INFO)
+
+    test_date = "15.12.2021"
+    print(f"\n--- Запуск проверки функции generate_json_response для даты: {test_date} ---\n")
+
+    # Вызываем функцию
+    result_data = generate_json_response(test_date)
+
+    # Печатаем итоговый JSON-словарь в терминал
+    print(json.dumps(result_data, indent=4, ensure_ascii=False))
 
 #--------------------------------------------------
 #----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
@@ -166,12 +225,12 @@ logger = logging.getLogger(__name__)
 
 # Пути к файлам относительно структуры проекта
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
+SETTINGS_FILE = os.path.join(BASE_DIR, '../user_settings.json')
 EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
 
 
 def generate_main_page_json(date_str: str) -> dict:
-    """Главная функция генерации JSON-ответа для страницы 'Главная'."""
+    """Главная функция генерации JSON-ответа для страницы 'Главная'"""
     logger.info(f"Начало генерации отчета для даты: {date_str}")
 
     try:
@@ -267,7 +326,7 @@ def generate_main_page_json(date_str: str) -> dict:
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-SETTINGS_FILE = os.path.join(BASE_DIR, 'user_settings.json')
+SETTINGS_FILE = os.path.join(BASE_DIR, '../user_settings.json')
 EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
 
 
