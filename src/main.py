@@ -3,6 +3,9 @@
 #--------------------------------------------------
 # запусков тестов во всех модулях с покрытием кода
 # poetry run pytest --cov=src tests/
+
+# запуск программы
+# poetry run python -m src.main
 #--------------------------------------------------
 
 # установка библиотеки uvicorn - выполняет роль веб-сервера
@@ -21,72 +24,72 @@
 # нажать Try it out >>> ввести дату, имеющуюся в operations.xlsx
 
 
-from fastapi import FastAPI, HTTPException
-from src.views import analytics_view
-
-app = FastAPI()
-
-@app.get("/analytics")
-def get_analytics(date: str = None):
-    result = analytics_view(date)
-
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    return result
+# from fastapi import FastAPI, HTTPException
+# from src.views import analytics_view
+#
+# app = FastAPI()
+#
+# @app.get("/analytics")
+# def get_analytics(date: str = None):
+#     result = analytics_view(date)
+#
+#     if "error" in result:
+#         raise HTTPException(status_code=400, detail=result["error"])
+#
+#     return result
 #--------------------------------------------------
 #----- 3. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
-from src.views import generate_json_response
-
-
-@app.get("/services")
-def get_services(date: str = None):
-    """Эндпоинт для получения курсов валют и стоимости акций"""
-    result = generate_json_response(date)
-
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    return result
-#--------------------------------------------------
-#----- 4. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
-import pandas as pd
-from fastapi import FastAPI, HTTPException
-from src.reports import spending_by_category
-from src.views import EXCEL_PATH  # Используем уже настроенный правильный путь к Excel
-
-
-# ... (ваши прошлые эндпоинты /analytics и /services остаются на месте) ...
-
-@app.get("/reports")
-def get_spending_report(category: str, date: str = None):
-    """Эндпоинт для генерации отчета по тратам в категории за последние 3 месяца"""
-
-    # 1. Проверяем наличие файла Excel
-    try:
-        df = pd.read_excel(EXCEL_PATH)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка чтения базы данных Excel: {e}")
-
-    # 2. Генерируем отчет через нашу функцию из reports.py
-    report_df = spending_by_category(df, category, date)
-
-    if report_df.empty:
-        return {"status": "success", "message": f"Траты по категории '{category}' за этот период не найдены",
-                "payload": []}
-
-    # 3. Приводим даты к строкам перед отправкой в JSON, чтобы не было ошибок
-    report_df['Дата операции'] = report_df['Дата операции'].dt.strftime("%d.%m.%Y %H:%M:%S")
-    # Очищаем NaN-ячейки
-    report_df = report_df.replace({pd.NA: None, float('nan'): None})
-
-    return {
-        "status": "success",
-        "category": category,
-        "payload": report_df.to_dict(orient="records")
-    }
+# from src.views import generate_json_response
+#
+#
+# @app.get("/services")
+# def get_services(date: str = None):
+#     """Эндпоинт для получения курсов валют и стоимости акций"""
+#     result = generate_json_response(date)
+#
+#     if "error" in result:
+#         raise HTTPException(status_code=400, detail=result["error"])
+#
+#     return result
+# #--------------------------------------------------
+# #----- 4. Веб страницы---ОСНОВНАЯ--API-------------
+# #--------------------------------------------------
+# import pandas as pd
+# from fastapi import FastAPI, HTTPException
+# from src.reports import spending_by_category
+# from src.views import EXCEL_PATH  # Используем уже настроенный правильный путь к Excel
+#
+#
+# # ... (ваши прошлые эндпоинты /analytics и /services остаются на месте) ...
+#
+# @app.get("/reports")
+# def get_spending_report(category: str, date: str = None):
+#     """Эндпоинт для генерации отчета по тратам в категории за последние 3 месяца"""
+#
+#     # 1. Проверяем наличие файла Excel
+#     try:
+#         df = pd.read_excel(EXCEL_PATH)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Ошибка чтения базы данных Excel: {e}")
+#
+#     # 2. Генерируем отчет через нашу функцию из reports.py
+#     report_df = spending_by_category(df, category, date)
+#
+#     if report_df.empty:
+#         return {"status": "success", "message": f"Траты по категории '{category}' за этот период не найдены",
+#                 "payload": []}
+#
+#     # 3. Приводим даты к строкам перед отправкой в JSON, чтобы не было ошибок
+#     report_df['Дата операции'] = report_df['Дата операции'].dt.strftime("%d.%m.%Y %H:%M:%S")
+#     # Очищаем NaN-ячейки
+#     report_df = report_df.replace({pd.NA: None, float('nan'): None})
+#
+#     return {
+#         "status": "success",
+#         "category": category,
+#         "payload": report_df.to_dict(orient="records")
+#     }
 
 
 #--------------------------------------------------
@@ -126,9 +129,13 @@ def main():
 
     choice = input("\nВыберите действие (1-5): ").strip()
 
-    # Путь к исходной таблице для сервисов поиска
-    excel_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '../data', 'operations.xlsx')
+    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+    if os.path.basename(CURRENT_DIR) == 'src':
+        BASE_DIR = os.path.dirname(CURRENT_DIR)
+    else:
+        BASE_DIR = CURRENT_DIR
 
+    excel_path = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
     # Загружаем сырые данные из Excel в список словарей, если файл существует
     raw_data = []
     if os.path.exists(excel_path):

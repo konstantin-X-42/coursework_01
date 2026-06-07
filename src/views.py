@@ -89,21 +89,21 @@ def analytics_view(date_param: str) -> dict:
 # --  --  -- ЗАПУСК ФУНКЦИИ --  analytics_view()  --  --  --  --  --  --  --  --
 # --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 
-if __name__ == "__main__":
-    # Настройка логирования, чтобы видеть возможные ошибки в консоли
-    logging.basicConfig(level=logging.INFO)
-
-    # Тестовая дата в формате, который ожидает ваша функция get_month_range
-    # (обычно это "YYYY-MM" или "DD.MM.YYYY" — укажите нужный вам формат)
-    test_date = "15.12.2021"
-
-    print(f"--- Запуск проверки функции analytics_view для даты: {test_date} ---")
-
-    # Вызываем функцию
-    result = analytics_view(test_date)
-
-    # Красивый вывод результата в формате JSON
-    print(json.dumps(result, indent=4, ensure_ascii=False))
+# if __name__ == "__main__":
+#     # Настройка логирования, чтобы видеть возможные ошибки в консоли
+#     logging.basicConfig(level=logging.INFO)
+#
+#     # Тестовая дата в формате, который ожидает ваша функция get_month_range
+#     # (обычно это "YYYY-MM" или "DD.MM.YYYY" — укажите нужный вам формат)
+#     test_date = "15.12.2021"
+#
+#     print(f"--- Запуск проверки функции analytics_view для даты: {test_date} ---")
+#
+#     # Вызываем функцию
+#     result = analytics_view(test_date)
+#
+#     # Вывод результата в формате JSON
+#     print(json.dumps(result, indent=4, ensure_ascii=False))
 
 
 #--------------------------------------------------
@@ -211,13 +211,6 @@ if __name__ == "__main__":
 #--------------------------------------------------
 #----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
 #--------------------------------------------------
-
-# import os
-# import json
-# import logging
-# import pandas as pd
-# from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
-# from src.services import get_currency_rates, get_stock_prices
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

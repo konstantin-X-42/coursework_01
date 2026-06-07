@@ -11,10 +11,10 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Папка для сохранения отчетов по умолчанию в корне проекта
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), '../data', 'reports')
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(CURRENT_DIR)
+REPORTS_DIR = os.path.join(BASE_DIR, 'data', 'reports')
 os.makedirs(REPORTS_DIR, exist_ok=True)
-
 
 def save_report_to_file(filename=None):
     """
@@ -102,67 +102,67 @@ def report_spending_by_category(df: pd.DataFrame, category: str, date_str: str =
 # ЗАПУСК функции-декоратор   save_report_to_file()
 # ==================================================
 
-if __name__ == "__main__":
-    import shutil
-
-    print("=== ЗАПУСК ФУНКЦИИ-ДЕКОРАТОРА    save_report_to_file() ===")
-
-    # Создаем базовый тестовый датафрейм
-    test_df = pd.DataFrame({"Дата операции": ["01.06.2026"], "Категория": ["Тест"], "Сумма платежа": [-100]})
-
-    # ----------------------------------------------------
-    # Тест 1: Проверка вызова БЕЗ СКОБОК @save_report_to_file
-    # Имя файла должно сгенерироваться автоматически
-    # ----------------------------------------------------
-    print("\n[Тест 1] Запуск функции с декоратором без параметров...")
-
-    # Наша функция report_spending_by_category уже обернута так
-    report_spending_by_category(test_df, "Тест", "01.06.2026")
-
-    # Проверяем, появился ли файл в папке REPORTS_DIR
-    files_in_dir = os.listdir(REPORTS_DIR)
-    auto_report_file = [f for f in files_in_dir if f.startswith("report_report_spending_by_category_")]
-
-    if auto_report_file:
-        print(f"✅ Успех! Создан файл с автоматическим именем: {auto_report_file[0]}")
-    else:
-        print("❌ Ошибка: Файл с автоматическим именем не найден!")
-
-    # ----------------------------------------------------
-    # Тест 2: Проверка вызова С ПАРАМЕТРАМИ @save_report_to_file("...")
-    # Имя файла должно быть строго кастомным
-    # ----------------------------------------------------
-    print("\n[Тест 2] Запуск функции с кастомным именем файла...")
-
-    custom_filename = "quick_test_custom_report.xlsx"
-
-
-    # На ходу создаем и декорируем тестовую функцию
-    @save_report_to_file(custom_filename)
-    def dummy_custom_report(df):
-        return df
-
-
-    dummy_custom_report(test_df)
-
-    custom_file_path = os.path.join(REPORTS_DIR, custom_filename)
-    if os.path.exists(custom_file_path):
-        print(f"✅ Успех! Создан файл с кастомным именем: {custom_filename}")
-        # Удаляем временный кастомный файл, чтобы не мусорить
-        os.remove(custom_file_path)
-    else:
-        print("❌ Ошибка: Кастомный файл не был создан!")
-
-    # ----------------------------------------------------
-    # Тест 3: Проверка сохранения контекста оригинальной функции (@wraps)
-    # ----------------------------------------------------
-    print("\n[Тест 3] Проверка сохранения метаданных функции (__name__)...")
-    if report_spending_by_category.__name__ == "report_spending_by_category":
-        print("✅ Успех! @wraps корректно сохранил имя оригинальной функции.")
-    else:
-        print(f"❌ Ошибка! Имя функции испорчено декоратором: {report_spending_by_category.__name__}")
-
-    print("\n=== ПРОВЕРКА ДЕКОРАТОРА ЗАВЕРШЕНА ===")
+# if __name__ == "__main__":
+#     import shutil
+#
+#     print("=== ЗАПУСК ФУНКЦИИ-ДЕКОРАТОРА    save_report_to_file() ===")
+#
+#     # Создаем базовый тестовый датафрейм
+#     test_df = pd.DataFrame({"Дата операции": ["01.06.2026"], "Категория": ["Тест"], "Сумма платежа": [-100]})
+#
+#     # ----------------------------------------------------
+#     # Тест 1: Проверка вызова БЕЗ СКОБОК @save_report_to_file
+#     # Имя файла должно сгенерироваться автоматически
+#     # ----------------------------------------------------
+#     print("\n[Тест 1] Запуск функции с декоратором без параметров...")
+#
+#     # Наша функция report_spending_by_category уже обернута так
+#     report_spending_by_category(test_df, "Тест", "01.06.2026")
+#
+#     # Проверяем, появился ли файл в папке REPORTS_DIR
+#     files_in_dir = os.listdir(REPORTS_DIR)
+#     auto_report_file = [f for f in files_in_dir if f.startswith("report_report_spending_by_category_")]
+#
+#     if auto_report_file:
+#         print(f"✅ Успех! Создан файл с автоматическим именем: {auto_report_file[0]}")
+#     else:
+#         print("❌ Ошибка: Файл с автоматическим именем не найден!")
+#
+#     # ----------------------------------------------------
+#     # Тест 2: Проверка вызова С ПАРАМЕТРАМИ @save_report_to_file("...")
+#     # Имя файла должно быть строго кастомным
+#     # ----------------------------------------------------
+#     print("\n[Тест 2] Запуск функции с кастомным именем файла...")
+#
+#     custom_filename = "quick_test_custom_report.xlsx"
+#
+#
+#     # На ходу создаем и декорируем тестовую функцию
+#     @save_report_to_file(custom_filename)
+#     def dummy_custom_report(df):
+#         return df
+#
+#
+#     dummy_custom_report(test_df)
+#
+#     custom_file_path = os.path.join(REPORTS_DIR, custom_filename)
+#     if os.path.exists(custom_file_path):
+#         print(f"✅ Успех! Создан файл с кастомным именем: {custom_filename}")
+#         # Удаляем временный кастомный файл, чтобы не мусорить
+#         os.remove(custom_file_path)
+#     else:
+#         print("❌ Ошибка: Кастомный файл не был создан!")
+#
+#     # ----------------------------------------------------
+#     # Тест 3: Проверка сохранения контекста оригинальной функции (@wraps)
+#     # ----------------------------------------------------
+#     print("\n[Тест 3] Проверка сохранения метаданных функции (__name__)...")
+#     if report_spending_by_category.__name__ == "report_spending_by_category":
+#         print("✅ Успех! @wraps корректно сохранил имя оригинальной функции.")
+#     else:
+#         print(f"❌ Ошибка! Имя функции испорчено декоратором: {report_spending_by_category.__name__}")
+#
+#     print("\n=== ПРОВЕРКА ДЕКОРАТОРА ЗАВЕРШЕНА ===")
 
 #--------------------------------------------------
 #----- 12. Сервисы---Доп Траты по категории--------
@@ -172,10 +172,7 @@ import logging
 from typing import Optional
 from datetime import datetime
 import pandas as pd
-from src.reports import save_report_to_file  # Наш декоратор из прошлого шага
-
-logger = logging.getLogger(__name__)
-
+from src.reports import save_report_to_file
 
 @save_report_to_file
 def spending_by_category(transactions: pd.DataFrame,
@@ -235,61 +232,61 @@ def spending_by_category(transactions: pd.DataFrame,
 # ЗАПУСК функции-декоратор   spending_by_category()
 # ==================================================
 
-if __name__ == "__main__":
-    import os
-
-    # Настраиваем базовый вывод логов в консоль, чтобы видеть шаги выполнения
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-
-    print("\n=== ЗАПУСК ПРОВЕРКИ ФУНКЦИИ-ДЕКОРАТОРА    spending_by_category() ===")
-
-    # 1. Формируем тестовые данные транзакций (Используем текущий 2026 год)
-    # Текущая дата для тестов: 07.06.2026. Окно в 3 месяца: с 07.03.2026 по 07.06.2026
-    test_data = {
-        "Дата операции": [
-            "05.06.2026 14:20:00",  # Внутри окна (Июнь)
-            "15.04.2026 09:00:00",  # Внутри окна (Апрель)
-            "10.01.2026 18:45:00",  # Вне окна (Январь — больше 3 месяцев назад)
-            "20.05.2026 12:00:00"  # Внутри окна, но другая категория
-        ],
-        "Категория": ["Супермаркеты", "Супермаркеты", "Супермаркеты", "Одежда"],
-        "Сумма платежа": [-1500.50, -450.00, -3000.00, -5000.00]
-    }
-    df_transactions = pd.DataFrame(test_data)
-
-    # 2. Вызов функции с автоматическим срабатыванием декоратора
-    # Анализируем категорию "Супермаркеты" относительно даты "07.06.2026"
-    target_category = "Супермаркеты"
-    analysis_date = "07.06.2026"
-
-    print(f"\n[Шаг 1] Вызываем функцию spending_by_category для категории '{target_category}'...")
-    filtered_df = spending_by_category(df_transactions, category=target_category, date=analysis_date)
-
-    # 3. Проверка корректности фильтрации Pandas dataframe
-    print("\n[Шаг 2] Проверяем результат фильтрации в памяти:")
-    print(filtered_df)
-
-    # Ожидаем ровно 2 транзакции (июнь и апрель). Январь отсекается по DateOffset(months=3)
-    assert len(filtered_df) == 2, f"❌ Ошибка фильтрации! Ожидалось 2 строки, получено {len(filtered_df)}"
-    print("✅ Фильтрация данных по дате, категории и значению расхода сработала верно.")
-
-    # 4. Проверка работы декоратора (проверяем физическое создание файла Excel)
-    print("\n[Шаг 3] Проверяем, сохранил ли декоратор файл на диск...")
-
-    # Импортируем путь директории из модуля с декоратором для валидации
-    from src.reports import REPORTS_DIR
-
-    if os.path.exists(REPORTS_DIR):
-        files = os.listdir(REPORTS_DIR)
-        # Ищем файл, чье имя начинается со строгого паттерна нашей новой функции
-        generated_files = [f for f in files if f.startswith("report_spending_by_category_")]
-
-        if generated_files:
-            print(f"✅ Успех! Декоратор перехватил управление и создал файл: {generated_files[-1]}")
-        else:
-            print("❌ Ошибка! Функция отработала, но файл в директории отчетов не найден.")
-    else:
-        print(f"❌ Ошибка! Директория для отчетов не существует по пути: {REPORTS_DIR}")
-
-    print("\n=== ПРОВЕРКА ДЕКОРАТОРА И ФУНКЦИИ УСПЕШНО ЗАВЕРШЕНА ===")
+# if __name__ == "__main__":
+#     import os
+#
+#     # Настраиваем базовый вывод логов в консоль, чтобы видеть шаги выполнения
+#     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+#
+#     print("\n=== ЗАПУСК ПРОВЕРКИ ФУНКЦИИ-ДЕКОРАТОРА    spending_by_category() ===")
+#
+#     # 1. Формируем тестовые данные транзакций (Используем текущий 2026 год)
+#     # Текущая дата для тестов: 07.06.2026. Окно в 3 месяца: с 07.03.2026 по 07.06.2026
+#     test_data = {
+#         "Дата операции": [
+#             "05.06.2026 14:20:00",  # Внутри окна (Июнь)
+#             "15.04.2026 09:00:00",  # Внутри окна (Апрель)
+#             "10.01.2026 18:45:00",  # Вне окна (Январь — больше 3 месяцев назад)
+#             "20.05.2026 12:00:00"  # Внутри окна, но другая категория
+#         ],
+#         "Категория": ["Супермаркеты", "Супермаркеты", "Супермаркеты", "Одежда"],
+#         "Сумма платежа": [-1500.50, -450.00, -3000.00, -5000.00]
+#     }
+#     df_transactions = pd.DataFrame(test_data)
+#
+#     # 2. Вызов функции с автоматическим срабатыванием декоратора
+#     # Анализируем категорию "Супермаркеты" относительно даты "07.06.2026"
+#     target_category = "Супермаркеты"
+#     analysis_date = "07.06.2026"
+#
+#     print(f"\n[Шаг 1] Вызываем функцию spending_by_category для категории '{target_category}'...")
+#     filtered_df = spending_by_category(df_transactions, category=target_category, date=analysis_date)
+#
+#     # 3. Проверка корректности фильтрации Pandas dataframe
+#     print("\n[Шаг 2] Проверяем результат фильтрации в памяти:")
+#     print(filtered_df)
+#
+#     # Ожидаем ровно 2 транзакции (июнь и апрель). Январь отсекается по DateOffset(months=3)
+#     assert len(filtered_df) == 2, f"❌ Ошибка фильтрации! Ожидалось 2 строки, получено {len(filtered_df)}"
+#     print("✅ Фильтрация данных по дате, категории и значению расхода сработала верно.")
+#
+#     # 4. Проверка работы декоратора (проверяем физическое создание файла Excel)
+#     print("\n[Шаг 3] Проверяем, сохранил ли декоратор файл на диск...")
+#
+#     # Импортируем путь директории из модуля с декоратором для валидации
+#     from src.reports import REPORTS_DIR
+#
+#     if os.path.exists(REPORTS_DIR):
+#         files = os.listdir(REPORTS_DIR)
+#         # Ищем файл, чье имя начинается со строгого паттерна нашей новой функции
+#         generated_files = [f for f in files if f.startswith("report_spending_by_category_")]
+#
+#         if generated_files:
+#             print(f"✅ Успех! Декоратор перехватил управление и создал файл: {generated_files[-1]}")
+#         else:
+#             print("❌ Ошибка! Функция отработала, но файл в директории отчетов не найден.")
+#     else:
+#         print(f"❌ Ошибка! Директория для отчетов не существует по пути: {REPORTS_DIR}")
+#
+#     print("\n=== ПРОВЕРКА ДЕКОРАТОРА И ФУНКЦИИ УСПЕШНО ЗАВЕРШЕНА ===")
 

@@ -277,7 +277,6 @@ import json
 import unittest
 from unittest.mock import patch
 
-# Импортируем функцию из вашего модуля (замените src.services на ваш реальный путь)
 from src.services import simple_search
 
 
@@ -345,7 +344,6 @@ import json
 import unittest
 from unittest.mock import patch
 
-# Импортируем функцию из вашего модуля (замените src.services на ваш реальный путь)
 from src.services import search_by_phone_numbers
 
 

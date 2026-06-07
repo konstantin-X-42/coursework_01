@@ -74,26 +74,26 @@ def load_user_settings(file_path: str) -> tuple[list[str], list[str]]:
 # --  --  -- ЗАПУСК ФУНКЦИИ -- get_month_range()  --  --  --  --  --  --  --  --
 # --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 
-if __name__ == "__main__":
-    # 1. Тестируем получение диапазона дат
-    test_date = "15.12.2021"
-    print(f"--- Проверка функции get_month_range для даты {test_date} ---")
-    try:
-        start, end = get_month_range(test_date)
-        print(f"Начало периода: {start.strftime('%d.%m.%Y')}")
-        print(f"Конец периода: {end.strftime('%d.%m.%Y')}\n")
-    except ValueError as e:
-        print(f"Ошибка: {e}\n")
-
-    # 2. Тестируем чтение файла настроек
-    CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    settings_file = os.path.abspath(os.path.join(CURRENT_DIR, "..", "user_settings.json"))
-    # settings_file = "user_settings.json"
-    print(f"--- Проверка функции load_user_settings для файла {settings_file} ---")
-
-    currencies, stocks = load_user_settings(settings_file)
-    print(f"Загруженные валюты: {currencies}")
-    print(f"Загруженные акции: {stocks}")
+# if __name__ == "__main__":
+#     # 1. Тестируем получение диапазона дат
+#     test_date = "15.12.2021"
+#     print(f"--- Проверка функции get_month_range для даты {test_date} ---")
+#     try:
+#         start, end = get_month_range(test_date)
+#         print(f"Начало периода: {start.strftime('%d.%m.%Y')}")
+#         print(f"Конец периода: {end.strftime('%d.%m.%Y')}\n")
+#     except ValueError as e:
+#         print(f"Ошибка: {e}\n")
+#
+#     # 2. Тестируем чтение файла настроек
+#     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+#     settings_file = os.path.abspath(os.path.join(CURRENT_DIR, "..", "user_settings.json"))
+#     # settings_file = "user_settings.json"
+#     print(f"--- Проверка функции load_user_settings для файла {settings_file} ---")
+#
+#     currencies, stocks = load_user_settings(settings_file)
+#     print(f"Загруженные валюты: {currencies}")
+#     print(f"Загруженные акции: {stocks}")
 
 #--------------------------------------------------
 #----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
@@ -104,8 +104,6 @@ import logging
 
 # Настраиваем логирование, чтобы logger.info выводил сообщения в консоль
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 
 def get_greeting(dt: datetime) -> str:
     """Возвращает приветствие строго по временным интервалам ТЗ."""
@@ -142,10 +140,6 @@ if __name__ == "__main__":
 from datetime import datetime
 import logging
 
-# Настройка логера для текущего модуля (если еще не сделано вверху файла)
-logger = logging.getLogger(__name__)
-
-
 def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
     """
     Парсит строку 'YYYY-MM-DD HH:MM:SS'.
@@ -166,19 +160,3 @@ def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
         # exc_info=True запишет в логи подробную техническую причину сбоя (traceback)
         logger.error(f"Ошибка парсинга даты {date_str}: {e}", exc_info=True)
         raise ValueError("Неверный формат. Используйте YYYY-MM-DD HH:MM:SS")
-
-
-# ----------------------------до внедрения логов-------------
-# def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
-#     """
-#     Парсит строку 'YYYY-MM-DD HH:MM:SS'.
-#     Возвращает объект даты и дату начала этого месяца.
-#     """
-#     try:
-#         end_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-#         start_date = end_date.replace(day=1, hour=0, minute=0, second=0)
-#         return start_date, end_date
-#     except ValueError as e:
-#         logger.error(f"Ошибка парсинга даты {date_str}: {e}")
-#         raise ValueError("Неверный формат. Используйте YYYY-MM-DD HH:MM:SS")
-
