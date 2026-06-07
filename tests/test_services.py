@@ -13,6 +13,10 @@ from src.services import get_stock_prices
 # pytest tests/test_services.py
 #--------------------------------------------------
 
+# ==========================================
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    get_currency_rates()
+# ==========================================
+
 class TestCurrencyRates(unittest.TestCase):
 
     @patch("src.services.API_KEY", "TEST_KEY")
@@ -81,8 +85,9 @@ class TestCurrencyRates(unittest.TestCase):
         self.assertEqual(result[0]["currency"], "USD")
         self.assertEqual(result[0]["rate"], 91.5)
 
-# ===================================================================================
-# ===================================================================================
+# ==========================================
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    get_stock_prices()
+# ==========================================
 
 class TestStockPrices(unittest.TestCase):
 
@@ -157,17 +162,83 @@ class TestStockPrices(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
-
-
-
-
 #--------------------------------------------------
 #----- 9. Сервисы---ОСНОВНАЯ-----------------------
 #--------------------------------------------------
 
 import json
-import pytest
+import unittest
+from unittest.mock import patch
 from src.services import analyze_cashback_categories
+
+class TestAnalyzeCashbackCategories(unittest.TestCase):
+
+    def test_analyze_success(self):
+        """Тест успешного анализа транзакций с правильной фильтрацией и расчётом кэшбэка."""
+        mock_data = [
+            # Подходящая транзакция (Супермаркеты): расход 10500, кэшбэк 105
+            {"Дата операции": "15.12.2025", "Сумма платежа": -10500.0, "Категория": "Супермаркеты"},
+            # Подходящая транзакция (Супермаркеты): расход 450, кэшбэк 4 (всего 109)
+            {"Дата операции": "20.12.2025 14:00:00", "Сумма платежа": -450.0, "Категория": "Супермаркеты"},
+            # Подходящая транзакция (Фастфуд): расход 1000, кэшбэк 10
+            {"Дата операции": "2025-12-01", "Сумма платежа": -1000.0, "Категория": "Фастфуд"},
+            # НЕ подходит: другой месяц (ноябрь)
+            {"Дата операции": "30.11.2025", "Сумма платежа": -5000.0, "Категория": "Одежда"},
+            # НЕ подходит: другой год (2024)
+            {"Дата операции": "15.12.2024", "Сумма платежа": -3000.0, "Категория": "Аптеки"},
+            # НЕ подходит: это доход (сумма больше 0)
+            {"Дата операции": "05.12.2025", "Сумма платежа": 50000.0, "Категория": "Зарплата"},
+            # Подходящая транзакция без категории (должна сгруппироваться в 'Без категории')
+            {"Дата операции": "10.12.2025", "Сумма платежа": -500.0}
+        ]
+
+        # Запускаем анализ за декабрь 2025 года
+        json_result = analyze_cashback_categories(mock_data, year=2025, month=12)
+        result = json.loads(json_result)
+
+        # Проверяем структуру и точные суммы кэшбэка (1% через целочисленное деление // 100)
+        self.assertEqual(result["Супермаркеты"], 109)  # (10500 // 100) + (450 // 100) = 105 + 4 = 109
+        self.assertEqual(result["Фастфуд"], 10)  # 1000 // 100 = 10
+        self.assertEqual(result["Без категории"], 5)  # 500 // 100 = 5
+        self.assertNotIn("Одежда", result)
+        self.assertNotIn("Зарплата", result)
+
+    def test_analyze_empty_data(self):
+        """Тест передачи пустого списка транзакций."""
+        json_result = analyze_cashback_categories([], year=2025, month=12)
+        self.assertEqual(json_result, "{}")
+
+    def test_analyze_zero_cashback_filtered(self):
+        """Тест фильтрации категорий, где кэшбэк равен 0."""
+        mock_data = [
+            # Расход меньше 100 рублей дает 0 рублей кэшбэка
+            {"Дата операции": "01.12.2025", "Сумма платежа": -50.0, "Категория": "Такси"}
+        ]
+        json_result = analyze_cashback_categories(mock_data, year=2025, month=12)
+
+        # Категория 'Такси' не должна попасть в финальный JSON, так как кэшбэк равен 0
+        self.assertEqual(json_result, "{}")
+
+    @patch("src.reports.logger")
+    def test_analyze_corrupted_transactions(self, mock_logger):
+        """Тест устойчивости функции к битым и некорректным данным в транзакциях."""
+        mock_data = [
+            # Битая дата
+            {"Дата операции": "не-дата", "Сумма платежа": -1000.0, "Категория": "Продукты"},
+            # Вместо суммы — невалидная строка
+            {"Дата операции": "12.12.2025", "Сумма платежа": "много", "Категория": "Продукты"},
+            # Пропущенные ключевые поля
+            {"Категория": "Продукты"}
+        ]
+
+        # Функция не должна упасть, битые транзакции просто пропускаются через блок try-except
+        json_result = analyze_cashback_categories(mock_data, year=2025, month=12)
+        self.assertEqual(json_result, "{}")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
 
 def test_analyze_cashback_categories_success():
     # Тестовый набор транзакций
@@ -199,54 +270,130 @@ def test_analyze_cashback_categories_empty():
 #----- 10. Сервисы---Доп Простой поиск-------------
 #--------------------------------------------------
 
+# ==========================================
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    simple_search()
+# ==========================================
 import json
-import pytest
-from src.services import simple_search, search_by_phone_numbers
+import unittest
+from unittest.mock import patch
+
+# Импортируем функцию из вашего модуля (замените src.services на ваш реальный путь)
+from src.services import simple_search
 
 
-# Фикстура с тестовыми данными транзакций
-@pytest.fixture
-def sample_transactions():
-    return [
-        {"Категория": "Супермаркеты", "Описание": "Лента Супер", "Сумма платежа": -1500},
-        {"Категория": "Фастфуд", "Описание": "Вкусно и точка", "Сумма платежа": -350},
-        {"Категория": "Переводы", "Описание": "Я МТС +7 921 11-22-33", "Сумма платежа": -500},
-        {"Категория": "Связь", "Описание": "Тинькофф Мобайл +7 995 555-55-55", "Сумма платежа": -400},
-        {"Категория": "Переводы", "Описание": "Перевод маме", "Сумма платежа": -1000},
-    ]
+class TestSimpleSearch(unittest.TestCase):
+
+    def setUp(self):
+        """Инициализация общего набора тестовых транзакций перед каждым тестом."""
+        self.mock_data = [
+            {"Категория": "Супермаркеты", "Описание": "Покупка в Пятерочке", "Сумма": -1200},
+            {"Категория": "ФаСТфУд", "Описание": "Обед в Бургер Кинг", "Сумма": -450},
+            {"Категория": "Транспорт", "Описание": "Яндекс Такси", "Сумма": -350},
+            {"Категория": "Другое", "Описание": "Обычный текст без категорий", "Сумма": -100}
+        ]
+
+    @patch("src.services.logger")
+    def test_simple_search_by_description(self, mock_logger):
+        """Тест успешного поиска по части описания (регистронезависимо)."""
+        # Ищем "пятер" в разном регистре
+        json_result = simple_search(self.mock_data, "пЯтЕр")
+        result = json.loads(json_result)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["Описание"], "Покупка в Пятерочке")
+        self.assertEqual(result[0]["Категория"], "Супермаркеты")
+
+    @patch("src.services.logger")
+    def test_simple_search_by_category(self, mock_logger):
+        """Тест успешного поиска по категории (регистронезависимо)."""
+        # Ищем "фастфуд", в данных категория записана как "ФаСТфУд"
+        json_result = simple_search(self.mock_data, "фастфуд")
+        result = json.loads(json_result)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["Категория"], "ФаСТфУд")
+        self.assertEqual(result[0]["Описание"], "Обед в Бургер Кинг")
+
+    @patch("src.services.logger")
+    def test_simple_search_empty_query(self, mock_logger):
+        """Тест передачи пустого поискового запроса."""
+        json_result = simple_search(self.mock_data, "")
+        result = json.loads(json_result)
+
+        # Должен вернуться пустой JSON-массив
+        self.assertEqual(result, [])
+        # Проверяем, что логер зафиксировал предупреждение
+        mock_logger.warning.assert_called_with("Передан пустой поисковый запрос.")
+
+    @patch("src.services.logger")
+    def test_simple_search_no_results(self, mock_logger):
+        """Тест ситуации, когда совпадений не найдено."""
+        json_result = simple_search(self.mock_data, "Авиабилеты")
+        result = json.loads(json_result)
+
+        self.assertEqual(result, [])
 
 
-def test_simple_search_by_description(sample_transactions):
-    """Проверка простого поиска по совпадению в описании (без учета регистра)."""
-    json_res = simple_search(sample_transactions, "леНтА")
-    res = json.loads(json_res)
+if __name__ == "__main__":
+    unittest.main()
 
-    assert len(res) == 1
-    assert res[0]["Описание"] == "Лента Супер"
+# ==========================================
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    search_by_phone_numbers()
+# ==========================================
 
+import json
+import unittest
+from unittest.mock import patch
 
-def test_simple_search_by_category(sample_transactions):
-    """Проверка простого поиска по совпадению в категории."""
-    json_res = simple_search(sample_transactions, "Фастфуд")
-    res = json.loads(json_res)
-
-    assert len(res) == 1
-    assert res[0]["Категория"] == "Фастфуд"
+# Импортируем функцию из вашего модуля (замените src.services на ваш реальный путь)
+from src.services import search_by_phone_numbers
 
 
-def test_simple_search_empty_query(sample_transactions):
-    """Проверка поведения при пустом поисковом запросе."""
-    json_res = simple_search(sample_transactions, "")
-    assert json.loads(json_res) == []
+class TestSearchByPhoneNumbers(unittest.TestCase):
+
+    def setUp(self):
+        """Инициализация тестовых транзакций перед каждым тестом."""
+        self.mock_data = [
+            {"Категория": "Переводы", "Описание": "Перевод Ивану по номеру +7 912 345-67-89 на карту"},
+            {"Категория": "Связь", "Описание": "Оплата телефона 89998887766 через приложение"},
+            {"Категория": "Переводы", "Описание": "Перевод маме +79001234567"},
+            {"Категория": "Супермаркеты", "Описание": "Покупка в Пятерочке (номер чека 123456)"},
+            {"Категория": "Транспорт", "Описание": "Яндекс Такси, код подтверждения 8901"}
+        ]
+
+    @patch("src.services.logger")
+    def test_search_by_phone_numbers_success(self, mock_logger):
+        """Тест успешного поиска транзакций с мобильными номерами."""
+        # ИСПРАВЛЕНО: Функция возвращает список, json.loads больше не используем
+        result = search_by_phone_numbers(self.mock_data)
+
+        self.assertEqual(len(result), 3)
+
+        descriptions = [tx.get("Описание", "") for tx in result]
+        self.assertIn("Перевод Ивану по номеру +7 912 345-67-89 на карту", descriptions)
+        self.assertIn("Оплата телефона 89998887766 через приложение", descriptions)
+        self.assertIn("Перевод маме +79001234567", descriptions)
+
+    @patch("src.services.logger")
+    def test_search_by_phone_numbers_no_matches(self, mock_logger):
+        """Тест ситуации, когда совпадений не найдено."""
+        clear_data = [
+            {"Категория": "Супермаркеты", "Описание": "Обычная покупка в магазине"},
+            {"Категория": "Другое", "Описание": "Номер договора № 9876543210"}
+        ]
+        result = search_by_phone_numbers(clear_data)
+
+        # ИСПРАВЛЕНО: Прямое сравнение со списком и удален аргумент second
+        self.assertEqual(result, [])
+
+    @patch("src.services.logger")
+    def test_search_by_phone_numbers_empty_data(self, mock_logger):
+        """Тест передачи пустого списка транзакций."""
+        result = search_by_phone_numbers([])
+
+        # ИСПРАВЛЕНО: Убран лишний аргумент second
+        self.assertEqual(result, [])
 
 
-def test_search_by_phone_numbers(sample_transactions):
-    """Проверка фильтрации транзакций, содержащих телефонные номера."""
-    json_res = search_by_phone_numbers(sample_transactions)
-    res = json.loads(json_res)
-
-    # Должно найти 2 транзакции (с МТС и Тинькофф Мобайл)
-    assert len(res) == 2
-    assert "МТС" in res[0]["Описание"]
-    assert "Тинькофф" in res[1]["Описание"]
-
+if __name__ == "__main__":
+    unittest.main()
