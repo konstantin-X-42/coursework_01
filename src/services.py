@@ -116,69 +116,99 @@ if __name__ == "__main__":
 # --------------------------------------------------------------------
 
 
-import logging
-import requests
-
-# Настраиваем логирование, чтобы logger.error и logger.warning не выдавали ошибку
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+API_KEY = os.getenv("MARKETSTACK_API_KEY")
+BASE_URL = "https://api.marketstack.com/v1/eod"
 
 
-def get_stock_prices(stocks: list[str]) -> list:
-    """Запрос текущих цен акций в USD через бесплатный финансовый API."""
-    if not stocks:
+def get_stock_prices(currencies: list[str]) -> list:
+    """Запрос текущих цен акций в USD через бесплатный финансовый API.
+    Принимает список тикеров акций (например, ['AAPL', 'AMZN'])
+    и возвращает список словарей с их последней ценой закрытия (в USD).
+    """
+    if not currencies:
+        logger.warning("Передан пустой список тикеров валют.")
         return []
 
-    prices_list = []
-    try:
-        for stock in stocks:
-            # ИСПРАВЛЕНО: Добавлен корректный эндпоинт API
-            url = f"https://financialmodelingprep.com{stock}?apikey=demo"
-            response = requests.get(url, timeout=5)
-
-            if response.status_code == 200:
-                data = response.json()
-                # ИСПРАВЛЕНО: Извлекаем первый элемент списка [0], так как API возвращает список
-                if isinstance(data, list) and len(data) > 0:
-                    stock_info = data[0]
-                    price = round(float(stock_info.get("price", 0)), 2)
-                    prices_list.append({"stock": stock, "price": price})
-
-        if prices_list:
-            return prices_list
-
-    except Exception as e:
-        logger.error(f"Ошибка получения цен акций через API: {e}")
-
-    # Блок сработает, если API недоступен или демо-ключ исчерпал лимиты запросов
-    logger.warning("Используются резервные стоимости акций (офлайн-режим)")
-    mock_prices = {
-        "AAPL": 175.30,
-        "AMZN": 180.50,
-        "GOOGL": 152.10,
-        "MSFT": 415.20,
-        "TSLA": 170.80,
+    # Заглушка (офлайн-режим) на случай отсутствия ключа или сбоя сети
+    mock_data = {
+        "AAPL": 180.0,
+        "AMZN": 175.0,
+        "GOOGL": 150.0,
+        "MSFT": 420.0,
+        "TSLA": 170.0
     }
-    return [
-        {"stock": stock, "price": mock_prices.get(stock, 100.00)}
-        for stock in stocks
-    ]
+
+    if not API_KEY:
+        logger.error("Критическая ошибка: API-ключ не найден в переменных окружения.")
+        logger.warning("Переход в резервный офлайн-режим.")
+        return [
+            {"currency": cur, "rate": mock_data.get(cur, 100.0)}
+            for cur in currencies
+        ]
+
+    # Переводим список тикеров в строку через запятую для Marketstack API
+    symbols = ",".join(currencies)
+
+    # Ключ в Marketstack передается как параметр access_key, а не в заголовках
+    params = {
+        "access_key": API_KEY,
+        "symbols": symbols,
+        "limit": len(currencies)  # Ограничиваем количество записей
+    }
+
+    logger.info(f"Начало сетевого запроса курсов ценных бумаг: {currencies}")
+
+    try:
+        response = requests.get(BASE_URL, params=params, timeout=5)
+        response.raise_for_status()  # Вызовет ошибку при сбое сети или неверном токене
+
+        data = response.json()
+        stock_data = data.get("data", [])
+
+        # Если сервер прислал пустой массив (например, из-за лимитов бесплатного тарифа)
+        if not stock_data:
+            logger.warning("API вернул пустой массив. Переход на резервные курсы ценных бумаг")
+            return [
+                {"currency": cur, "rate": mock_data.get(cur, 100.0)}
+                for cur in currencies
+            ]
+
+        rates_list = []
+        # Разбираем массив данных 'data' из ответа API
+        for item in stock_data:
+            ticker = item.get("symbol")
+            # Берем цену закрытия (close)
+            rate = round(float(item.get("close", 0.0)), 2)
+            rates_list.append({"currency": ticker, "rate": rate})
+            logger.info(f"Успешно получен курс {ticker} через API")
+
+        logger.info("Обработка всех ценных бумаг успешно завершена.")
+        return rates_list
+
+    except (requests.RequestException, KeyError, ValueError) as e:
+        logger.error(f"Произошел сетевой или системный сбой при запросе курсов ценных бумаг: {e}")
+        logger.warning("Переход на резервные курсы для всего списка ценных бумаг.")
+        # В случае полного падения сети возвращаем заглушки для всего списка
+        return [
+            {"currency": cur, "rate": mock_data.get(cur, 100.0)}
+            for cur in currencies
+        ]
 
 
 # ==========================================================
 # ЗАПУСК функции get_stock_prices()
 # ==========================================================
+
 if __name__ == "__main__":
-    # 1. Создаем список тикеров акций для проверки
-    test_stocks = ["AAPL", "AMZN", "MSFT", "UNKNOWN"]
+    # Тестовый список обновлен в соответствии с вашим запросом
+    test_currencies = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
 
-    # 2. Вызываем функцию и передаем ей наш список
-    result = get_stock_prices(test_stocks)
-
-    # 3. Выводим полученный результат в консоль
-    print("\n--  -- Результат выполнения функции get_stock_prices() --  --")
-    for item in result:
-        print(f"Акция: {item['stock']} | Цена: ${item['price']}")
+    try:
+        result = get_stock_prices(test_currencies)
+        print("\n-- -- Результат выполнения функции get_stock_prices() -- --")
+        print(result)
+    except Exception as e:
+        print(f"\nПроизошла ошибка при выполнении: {e}")
 
 #--------------------------------------------------
 #----- 7. Веб страницы---доп.ГЛАВНАЯ---------------
