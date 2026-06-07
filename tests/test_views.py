@@ -299,3 +299,82 @@ class TestGenerateMainPageJson(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+#--------------------------------------------------
+#----- 14. main------------------------------------
+#--------------------------------------------------
+
+from datetime import datetime
+from unittest.mock import patch, MagicMock
+import pandas as pd
+import pytest
+from src.views import generate_main_page_data
+
+
+@pytest.fixture
+def mock_main_dependencies():
+    """Фикстура для изоляции внешних вызовов функции generate_main_page_data."""
+    with patch("src.views.parse_incoming_datetime") as mock_parse, \
+         patch("src.views.get_greeting") as mock_greet, \
+         patch("src.views.os.path.exists") as mock_exists, \
+         patch("src.views.pd.read_excel") as mock_read_excel, \
+         patch("src.views.load_user_settings") as mock_load_settings, \
+         patch("src.views.get_currency_rates") as mock_currency, \
+         patch("src.views.get_stock_prices") as mock_stock:
+
+        # Настройки по умолчанию
+        mock_parse.return_value = (datetime(2026, 6, 1), datetime(2026, 6, 7))
+        mock_greet.return_value = "Добрейший вечерочек"
+        mock_exists.return_value = True
+        mock_load_settings.return_value = (["USD"], ["AAPL"])
+        mock_currency.return_value = [{"currency": "USD", "rate": 90.0}]
+        mock_stock.return_value = [{"stock": "AAPL", "price": 180.0}]
+
+        yield {
+            "parse": mock_parse,
+            "greet": mock_greet,
+            "exists": mock_exists,
+            "read_excel": mock_read_excel,
+            "load_settings": mock_load_settings,
+            "currency": mock_currency,
+            "stock": mock_stock
+        }
+
+
+def test_generate_main_page_data_success(mock_main_dependencies):
+    """Тест успешного формирования агрегированных данных главной страницы."""
+    # Имитируем таблицу транзакций Excel
+    fake_excel_data = {
+        "Дата операции": ["01.06.2026", "02.06.2026", "10.12.2025"],
+        "Статус": ["OK", "OK", "OK"],
+        "Номер карты": ["*4444", "*4444", "*1111"],
+        "Сумма платежа": [-5000.0, -1500.0, -2000.0],
+        "Сумма операции": [-5000.0, -1500.0, -2000.0],
+        "Категория": ["Супермаркеты", "Одежда", "Фастфуд"],
+        "Описание": ["Покупка еды", "Покупка куртки", "Мимо кассы"]
+    }
+    mock_main_dependencies["read_excel"].return_value = pd.DataFrame(fake_excel_data)
+
+    response = generate_main_page_data("07.06.2026")
+
+    # Проверяем базовые поля
+    assert response["greeting"] == "Добрейший вечерочек"
+    assert response["currency_rates"] == [{"currency": "USD", "rate": 90.0}]
+    assert response["stock_prices"] == [{"stock": "AAPL", "price": 180.0}]
+
+    # Проверяем расчет по картам (транзакция от 10.12 не должна попасть в диапазон июня)
+    assert len(response["cards"]) == 1
+    assert response["cards"][0]["last_digits"] == "4444"
+    assert response["cards"][0]["total_spent"] == 6500.0  # 5000 + 1500
+    assert response["cards"][0]["cashback"] == 65.0       # 6500 / 100
+
+    # Проверяем ТОП транзакции (в июне их всего 2 штуки)
+    assert len(response["top_transactions"]) == 2
+    assert response["top_transactions"][0]["amount"] == -5000.0
+
+
+def test_generate_main_page_data_invalid_date(mock_main_dependencies):
+    """Проверка обработки некорректного формата переданной даты."""
+    mock_main_dependencies["parse"].side_effect = ValueError("Неверный формат даты")
+    response = generate_main_page_data("bad-date")
+    assert "error" in response

@@ -317,24 +317,27 @@ def generate_main_page_json(date_str: str) -> dict:
 #----- 14. main------------------------------------
 #--------------------------------------------------
 
-# import os
-# import logging
-# import pandas as pd
-# from src.utils import get_greeting, parse_incoming_datetime, load_user_settings
-# from src.services import get_currency_rates, get_stock_prices
+import os
+import logging
+import pandas as pd
+from src.utils import parse_incoming_datetime, get_greeting, load_user_settings
+from src.services import get_currency_rates, get_stock_prices
 
 logger = logging.getLogger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-SETTINGS_FILE = os.path.join(BASE_DIR, '../user_settings.json')
-EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SETTINGS_FILE = os.path.abspath(os.path.join(BASE_DIR, '../user_settings.json'))
+EXCEL_FILE = os.path.abspath(os.path.join(BASE_DIR, '../data', 'operations.xlsx'))
 
 
 def generate_main_page_data(date_str: str) -> dict:
-    """Формирует данные для Главной страницы согласно описанию колонок."""
+    """Формирует данные для Главной страницы согласно описанию колонок"""
+    logger.info(f"Старт генерации данных главной страницы для даты: {date_str}")
+
     try:
         start_date, end_date = parse_incoming_datetime(date_str)
     except ValueError as e:
+        logger.error(f"Ошибка парсинга даты: {e}")
         return {"error": str(e)}
 
     greeting = get_greeting(end_date)
@@ -346,33 +349,33 @@ def generate_main_page_data(date_str: str) -> dict:
             df = pd.read_excel(EXCEL_FILE)
             df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
 
-            # Фильтруем успешные транзакции за период
+            # Фильтруем успешные транзакции за указанный период
             mask = (df['Дата операции'] >= start_date) & (df['Дата операции'] <= end_date) & (df['Статус'] == 'OK')
             df_filtered = df[mask].copy()
 
-            # 1. Анализ карт (Расходы — Сумма платежа < 0)
+            # 1. Анализ карт (Только расходы)
             df_expenses = df_filtered[df_filtered['Сумма платежа'] < 0].copy()
             if not df_expenses.empty and 'Номер карты' in df_expenses.columns:
-                df_expenses['Сумма платежа_abs'] = df_expenses['Сумма платежа'].abs()
-                grouped = df_expenses.groupby('Номер карты')['Сумма платежа_abs'].sum().reset_index()
+                df_expenses['Сумма_abs'] = df_expenses['Сумма платежа'].abs()
+                grouped = df_expenses.groupby('Номер карты')['Сумма_abs'].sum().reset_index()
 
                 for _, row in grouped.iterrows():
-                    card_num = str(row['Номер карты']).strip()
-                    if card_num and card_num != 'nan':
-                        last_4 = card_num[-4:] if len(card_num) >= 4 else card_num
-                        total_spent = round(
-                            float(row['Сумма breakage_abs' if 'Сумма breakage_abs' in row else 'Сумма платежа_abs']), 2)
-                        # Кешбэк по ТЗ: 1 рубль на каждые 100 рублей расходов
+                    raw_card = str(row['Номер карты']).split('.')[0].strip()  # Очищаем от .0 если float
+                    if raw_card and raw_card != 'nan':
+                        last_4 = raw_card[-4:] if len(raw_card) >= 4 else raw_card
+                        total_spent = round(float(row['Сумма_abs']), 2)
                         cashback = round(total_spent / 100, 2)
+
                         cards_list.append({
                             "last_digits": last_4,
                             "total_spent": total_spent,
                             "cashback": cashback
                         })
 
-            # 2. Ровно 5 транзакций, отсортированных по убыванию поля amount
-            # По ТЗ поле называется 'amount', данные берем из 'Сумма операции' или 'Сумма платежа'
-            df_top = df_filtered.sort_values(by='Сумма операции', ascending=False).head(5)
+            # 2. Топ-5 транзакций по абсолютному значению расхода/дохода
+            df_filtered['amount_abs'] = df_filtered['Сумма операции'].abs()
+            df_top = df_filtered.sort_values(by='amount_abs', ascending=False).head(5)
+
             for _, row in df_top.iterrows():
                 top_transactions.append({
                     "date": row['Дата операции'].strftime("%d.%m.%Y"),
@@ -381,12 +384,16 @@ def generate_main_page_data(date_str: str) -> dict:
                     "description": str(row.get('Описание', ''))
                 })
         except Exception as e:
-            logger.error(f"Ошибка парсинга Excel: {e}")
+            logger.error(f"Ошибка обработки Excel-файла: {e}", exc_info=True)
 
-    # 3. Валюты и акции
-    currencies, stocks = load_user_settings(SETTINGS_FILE)
-    currency_rates = get_currency_rates(currencies)
-    stock_prices = get_stock_prices(stocks)
+    # 3. Сторонние сервисы (настройки, валюты, акции)
+    try:
+        currencies, stocks = load_user_settings(SETTINGS_FILE)
+        currency_rates = get_currency_rates(currencies)
+        stock_prices = get_stock_prices(stocks)
+    except Exception as e:
+        logger.error(f"Ошибка загрузки пользовательских настроек/курсов: {e}")
+        currency_rates, stock_prices = [], []
 
     return {
         "greeting": greeting,
@@ -395,4 +402,3 @@ def generate_main_page_data(date_str: str) -> dict:
         "currency_rates": currency_rates,
         "stock_prices": stock_prices
     }
-
