@@ -99,52 +99,86 @@ if __name__ == "__main__":
 #----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
 #--------------------------------------------------
 
-import logging
 from datetime import datetime
+import logging
 
+# Настраиваем логирование, чтобы logger.info выводил сообщения в консоль
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-#------заменить по новому условию---из main---------
-
-# def get_greeting(dt: datetime) -> str:
-#     """Возвращает приветствие строго по временным интервалам ТЗ."""
-#     time_now = dt.time()
-#     if datetime.strptime("06:00", "%H:%M").time() <= time_now <= datetime.strptime("11:59", "%H:%M").time():
-#         return "Доброе утро"
-#     elif datetime.strptime("12:00", "%H:%M").time() <= time_now <= datetime.strptime("17:59", "%H:%M").time():
-#         return "Добрый день"
-#     elif datetime.strptime("18:00", "%H:%M").time() <= time_now <= datetime.strptime("22:59", "%H:%M").time():
-#         return "Добрый вечер"
-#     else:
-#         return "Доброй ночи"
-
-#--------------------------------------------------
-
-
-
 def get_greeting(dt: datetime) -> str:
-    """Возвращает приветствие в зависимости от времени суток."""
-    hour = dt.hour
-    if 5 <= hour < 12:
-        return "Доброе утро"
-    elif 12 <= hour < 18:
-        return "Добрый день"
-    elif 18 <= hour < 23:
-        return "Добрый вечер"
+    """Возвращает приветствие строго по временным интервалам ТЗ."""
+    logger.info(f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}")
+
+    time_now = dt.time()
+    if datetime.strptime("06:00", "%H:%M").time() <= time_now <= datetime.strptime("11:59", "%H:%M").time():
+        greeting = "Доброе утро"
+    elif datetime.strptime("12:00", "%H:%M").time() <= time_now <= datetime.strptime("17:59", "%H:%M").time():
+        greeting = "Добрый день"
+    elif datetime.strptime("18:00", "%H:%M").time() <= time_now <= datetime.strptime("22:59", "%H:%M").time():
+        greeting = "Добрый вечер"
     else:
-        return "Доброй ночи"
+        greeting = "Доброй ночи"
+
+    logger.info(f"Успешно определено приветствие: '{greeting}'")
+    return greeting
+
+
+# ==========================================================
+# ЗАПУСК функции get_greeting()
+# ==========================================================
+if __name__ == "__main__":
+    # 1. Получаем текущую дату и время на компьютере
+    current_datetime = datetime.now()
+
+    # 2. Передаем её в функцию и получаем приветствие
+    greeting = get_greeting(current_datetime)
+
+    # 3. Выводим результат в консоль
+    print(f"Текущее время: {current_datetime.strftime('%H:%M:%S')}")
+    print(f"Результат: {greeting}")
+
+from datetime import datetime
+import logging
+
+# Настройка логера для текущего модуля (если еще не сделано вверху файла)
+logger = logging.getLogger(__name__)
+
 
 def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
     """
     Парсит строку 'YYYY-MM-DD HH:MM:SS'.
     Возвращает объект даты и дату начала этого месяца.
     """
+    # Логируем входные данные
+    logger.info(f"Начало парсинга входящей строки даты: '{date_str}'")
+
     try:
         end_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
         start_date = end_date.replace(day=1, hour=0, minute=0, second=0)
+
+        # Логируем успешный результат перед возвратом
+        logger.info(f"Успешный парсинг. Диапазон: {start_date} -> {end_date}")
         return start_date, end_date
+
     except ValueError as e:
-        logger.error(f"Ошибка парсинга даты {date_str}: {e}")
+        # exc_info=True запишет в логи подробную техническую причину сбоя (traceback)
+        logger.error(f"Ошибка парсинга даты {date_str}: {e}", exc_info=True)
         raise ValueError("Неверный формат. Используйте YYYY-MM-DD HH:MM:SS")
+
+
+# ----------------------------до внедрения логов-------------
+# def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
+#     """
+#     Парсит строку 'YYYY-MM-DD HH:MM:SS'.
+#     Возвращает объект даты и дату начала этого месяца.
+#     """
+#     try:
+#         end_date = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+#         start_date = end_date.replace(day=1, hour=0, minute=0, second=0)
+#         return start_date, end_date
+#     except ValueError as e:
+#         logger.error(f"Ошибка парсинга даты {date_str}: {e}")
+#         raise ValueError("Неверный формат. Используйте YYYY-MM-DD HH:MM:SS")
 

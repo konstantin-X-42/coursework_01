@@ -1,3 +1,11 @@
+import json
+import datetime
+import pytest
+import unittest
+from unittest.mock import patch, mock_open
+
+from src.utils import get_month_range, load_user_settings, get_greeting
+
 #--------------------------------------------------
 #----- 4. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
@@ -5,17 +13,8 @@
 # pytest tests/test_utils.py
 #--------------------------------------------------
 
-import json
-import datetime
-import pytest
-from unittest.mock import patch, mock_open
-
-# Импортируем ваши функции из модуля utils
-from src.utils import get_month_range, load_user_settings
-
-
 # ==========================================
-# ТЕСТЫ ДЛЯ ФУНКЦИИ get_month_range
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    get_month_range()
 # ==========================================
 
 def test_get_month_range_success():
@@ -61,7 +60,7 @@ def test_get_month_range_empty_date():
     assert str(exc_info.value) == "Параметр даты обязателен"
 
 # ==========================================
-# ТЕСТЫ ДЛЯ ФУНКЦИИ load_user_settings
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    load_user_settings()
 # ==========================================
 
 def test_load_user_settings_file_not_exists():
@@ -104,3 +103,61 @@ def test_load_user_settings_empty_keys():
         # Проверяем, что вернулись пустые списки по дефолту из .get()
         assert currencies == []
         assert stocks == []
+
+#--------------------------------------------------
+#----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
+#--------------------------------------------------
+
+# ==========================================
+# ТЕСТЫ ДЛЯ ФУНКЦИИ    get_greeting()
+# ==========================================
+
+class TestGetGreeting(unittest.TestCase):
+
+    def test_morning_border(self):
+        """Проверка утреннего интервала (06:00 - 11:59)."""
+        # Граница: ровно 06:00
+        dt_start = datetime.datetime.strptime("06:00", "%H:%M")
+        self.assertEqual(get_greeting(dt_start), "Доброе утро")
+
+        # Граница: ровно 11:59
+        dt_end = datetime.datetime.strptime("11:59", "%H:%M")
+        self.assertEqual(get_greeting(dt_end), "Доброе утро")
+
+    def test_afternoon_border(self):
+        """Проверка дневного интервала (12:00 - 17:59)."""
+        # Граница: ровно 12:00
+        dt_start = datetime.datetime.strptime("12:00", "%H:%M")
+        self.assertEqual(get_greeting(dt_start), "Добрый день")
+
+        # Граница: ровно 17:59
+        dt_end = datetime.datetime.strptime("17:59", "%H:%M")
+        self.assertEqual(get_greeting(dt_end), "Добрый день")
+
+    def test_evening_border(self):
+        """Проверка вечернего интервала (18:00 - 22:59)."""
+        # Граница: ровно 18:00
+        dt_start = datetime.datetime.strptime("18:00", "%H:%M")
+        self.assertEqual(get_greeting(dt_start), "Добрый вечер")
+
+        # Граница: ровно 22:59
+        dt_end = datetime.datetime.strptime("22:59", "%H:%M")
+        self.assertEqual(get_greeting(dt_end), "Добрый вечер")
+
+    def test_night_border(self):
+        """Проверка ночного интервала (23:00 - 05:59)."""
+        # Ночь: ровно 23:00
+        dt_start = datetime.datetime.strptime("23:00", "%H:%M")
+        self.assertEqual(get_greeting(dt_start), "Доброй ночи")
+
+        # Ночь: ровно 00:00 (полночь)
+        dt_midnight = datetime.datetime.strptime("00:00", "%H:%M")
+        self.assertEqual(get_greeting(dt_midnight), "Доброй ночи")
+
+        # Ночь: ровно 05:59
+        dt_end = datetime.datetime.strptime("05:59", "%H:%M")
+        self.assertEqual(get_greeting(dt_end), "Доброй ночи")
+
+
+if __name__ == "__main__":
+    unittest.main()
