@@ -1,3 +1,166 @@
+import unittest
+import os
+from unittest.mock import patch, Mock
+import requests
+
+from src.services import get_currency_rates
+from src.services import get_stock_prices
+
+#--------------------------------------------------
+#----- 5. Веб страницы---ОСНОВНАЯ--API-------------
+#--------------------------------------------------
+# запуск тестов
+# pytest tests/test_services.py
+#--------------------------------------------------
+
+class TestCurrencyRates(unittest.TestCase):
+
+    @patch("src.services.API_KEY", "TEST_KEY")
+    @patch("requests.get")
+    def test_api_success(self, mock_get):
+        """Тест успешного получения данных из API."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": 91.543}
+        mock_get.return_value = mock_response
+
+        result = get_currency_rates(["USD"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["currency"], "USD")
+        self.assertEqual(result[0]["rate"], 91.54)
+
+    def test_rub_handling(self):
+        """Тест обработки рубля (курс всегда должен быть 1.0)."""
+        result = get_currency_rates(["RUB"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["currency"], "RUB")
+        self.assertEqual(result[0]["rate"], 1.0)
+
+    def test_empty_list(self):
+        """Тест передачи пустого списка валют."""
+        result = get_currency_rates([])
+        self.assertEqual(result, [])
+
+    @patch("src.services.API_KEY", "TEST_KEY")
+    @patch("requests.get")
+    def test_api_error_response(self, mock_get):
+        """Тест поведения, если API возвращает ошибку (например, 404 или 429)."""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+        mock_get.return_value = mock_response
+
+        # Ожидаем, что сработает ветка else и подставится значение из mock_data
+        result = get_currency_rates(["USD"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["currency"], "USD")
+        self.assertEqual(result[0]["rate"], 91.5)
+
+    @patch("src.services.API_KEY", "TEST_KEY")
+    @patch("requests.get", side_effect=requests.RequestException("Network error"))
+    def test_network_failure(self, mock_get):
+        """Тест полного сбоя сети (срабатывает блок try-except)."""
+        # Передаем валюту, которой нет в моках, чтобы проверить дефолтное значение 75.0
+        result = get_currency_rates(["EUR", "GBP"])
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["currency"], "EUR")
+        self.assertEqual(result[0]["rate"], 98.2)  # Из mock_data
+        self.assertEqual(result[1]["currency"], "GBP")
+        self.assertEqual(result[1]["rate"], 75.0)  # Дефолт из dict.get()
+
+    @patch("src.services.API_KEY", None)
+    def test_no_api_key(self):
+        """Тест отсутствия API-ключа (сразу уходит в резервный офлайн-режим)."""
+        result = get_currency_rates(["USD"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["currency"], "USD")
+        self.assertEqual(result[0]["rate"], 91.5)
+
+# ===================================================================================
+# ===================================================================================
+
+class TestStockPrices(unittest.TestCase):
+
+    @patch("src.services.API_KEY", "TEST_MARKETSTACK_KEY")
+    @patch("requests.get")
+    def test_get_stock_prices_success(self, mock_get):
+        """Тест успешного получения цен акций через API."""
+        # Мокаем структуру ответа Marketstack API (поле 'data' со списком словарей)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {"symbol": "AAPL", "close": 182.546},
+                {"symbol": "AMZN", "close": 174.9}
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = get_stock_prices(["AAPL", "AMZN"])
+
+        # Проверяем структуру и округление цен до 2 знаков
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], {"currency": "AAPL", "rate": 182.55})
+        self.assertEqual(result[1], {"currency": "AMZN", "rate": 174.9})
+
+    def test_get_stock_prices_empty_list(self):
+        """Тест передачи пустого списка тикеров."""
+        result = get_stock_prices([])
+        self.assertEqual(result, [])
+
+    @patch("src.services.API_KEY", None)
+    def test_get_stock_prices_no_api_key(self):
+        """Тест логики при отсутствии API-ключа (переход на mock_data)."""
+        result = get_stock_prices(["AAPL", "UNKNOWN"])
+
+        # Должно вернуть заглушки: 180.0 для AAPL и 100.0 по умолчанию
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], {"currency": "AAPL", "rate": 180.0})
+        self.assertEqual(result[1], {"currency": "UNKNOWN", "rate": 100.0})
+
+    @patch("src.services.API_KEY", "TEST_MARKETSTACK_KEY")
+    @patch("requests.get")
+    def test_get_stock_prices_empty_api_data(self, mock_get):
+        """Тест ситуации, когда API возвращает пустой массив 'data'."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": []}
+        mock_get.return_value = mock_response
+
+        result = get_stock_prices(["GOOGL"])
+
+        # Ожидаем переход на резервные данные mock_data
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"currency": "GOOGL", "rate": 150.0})
+
+    @patch("src.services.API_KEY", "TEST_MARKETSTACK_KEY")
+    @patch("requests.get")
+    def test_get_stock_prices_api_error(self, mock_get):
+        """Тест обработки исключения при ошибке HTTP (например, 401 или 429)."""
+        # Настраиваем raise_for_status на вызов ошибки
+        mock_response = Mock()
+        mock_response.raise_for_status.side_effect = requests.RequestException("HTTP Error")
+        mock_get.return_value = mock_response
+
+        result = get_stock_prices(["MSFT"])
+
+        # Проверяем, что блок except перехватил ошибку и вернул заглушку
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], {"currency": "MSFT", "rate": 420.0})
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+
+
+
 #--------------------------------------------------
 #----- 9. Сервисы---ОСНОВНАЯ-----------------------
 #--------------------------------------------------
@@ -86,6 +249,4 @@ def test_search_by_phone_numbers(sample_transactions):
     assert len(res) == 2
     assert "МТС" in res[0]["Описание"]
     assert "Тинькофф" in res[1]["Описание"]
-
-
 
