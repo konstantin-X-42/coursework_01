@@ -252,7 +252,7 @@ def generate_main_page_json(date_str: str) -> dict:
             df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
 
             # Фильтруем данные: с 1-го числа месяца по входящую дату включительно
-            mask = (df['Дата операции'] >= start_date) & (df['Дата operations'] <= end_date)
+            mask = (df['Дата операции'] >= start_date) & (df['Дата операции'] <= end_date)
             df_filtered = df[mask].copy()
 
             # 1. Расчет по картам (только расходы/платежи, обычно это отрицательные или целевые суммы)

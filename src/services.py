@@ -211,53 +211,6 @@ if __name__ == "__main__":
         print(f"\nПроизошла ошибка при выполнении: {e}")
 
 #--------------------------------------------------
-#----- 7. Веб страницы---доп.ГЛАВНАЯ---------------
-#--------------------------------------------------
-
-# import logging
-# import requests
-#
-# logger = logging.getLogger(__name__)
-#
-# def get_currency_rates(currencies: list[str]) -> list[dict]:
-#     """Получает курсы валют относительно RUB в виде списка словарей."""
-#     if not currencies:
-#         return []
-#     url = "https://er-api.com"
-#     try:
-#         logger.info(f"Запрос курсов валют для: {currencies}")
-#         response = requests.get(url, timeout=5)
-#         if response.status_code == 200:
-#             rates = response.json().get("rates", {})
-#             return [
-#                 {"currency": cur, "rate": round(1 / rates[cur], 2)}
-#                 for cur in currencies if cur in rates
-#             ]
-#     except Exception as e:
-#         logger.error(f"Ошибка при получении курсов валют: {e}")
-#     return [{"currency": cur, "rate": "Данные недоступны"} for cur in currencies]
-#
-# def get_stock_prices(stocks: list[str]) -> list[dict]:
-#     """Получает цены акций с Yahoo Finance в виде списка словарей."""
-#     if not stocks:
-#         return []
-#     tickers = ",".join(stocks)
-#     url = f"https://yahoo.com{tickers}"
-#     headers = {'User-Agent': 'Mozilla/5.0'}
-#     try:
-#         logger.info(f"Запрос цен акций для: {stocks}")
-#         response = requests.get(url, headers=headers, timeout=5)
-#         if response.status_code == 200:
-#             results = response.json().get("quoteResponse", {}).get("result", [])
-#             return [
-#                 {"stock": item["symbol"], "price": item.get("regularMarketPrice")}
-#                 for item in results
-#             ]
-#     except Exception as e:
-#         logger.error(f"Ошибка при получении цен акций: {e}")
-#     return [{"stock": stock, "price": "Данные недоступны"} for stock in stocks]
-
-#--------------------------------------------------
 #----- 9. Сервисы---ОСНОВНАЯ-----------------------
 #--------------------------------------------------
 
@@ -394,6 +347,3 @@ def search_by_phone_numbers(data: list[dict]) -> list[dict]:
     # Шаблон находит +79..., 89..., +7 (900) 000-00-00, +7 900 000 00 00
     phone_pattern = re.compile(r'(?:\+7|8)[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}')
     return [tx for tx in data if phone_pattern.search(str(tx.get("Описание", "")))]
-
-#######################################
-#######################################
