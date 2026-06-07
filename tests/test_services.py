@@ -397,3 +397,53 @@ class TestSearchByPhoneNumbers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+#--------------------------------------------------
+#----- 13. main------search_by_phone_numbers()-----
+#--------------------------------------------------
+
+import pytest
+from src.services import search_by_phone_numbers
+
+@pytest.fixture
+def sample_transactions():
+    """Фикстура с разнообразными тестовыми транзакциями."""
+    return [
+        {"id": 1, "Описание": "Перевод Ивану по номеру +7 912 345-67-89 на карту"},
+        {"id": 2, "Описание": "Оплата телефона 89998887766 через приложение"},
+        {"id": 3, "Описание": "Перевод маме +7(900)123-45-67"},
+        {"id": 4, "Описание": "Покупка в супермаркете Лента"},
+        {"id": 5, "Описание": "Контакты поддержки: +7 495 123-45-67 (городской)"},
+        {"id": 6, "Описание": "Перевод по номеру 9123456789 без семерки/восьмерки"},
+        {"id": 7, "Описание": "Номер в тексте +7 999 111 22 33 разбит пробелами"},
+        {"id": 8, "Описание": ""},  # Пустое описание
+        {"id": 9, "Сумма": -100}  # Вообще нет ключа "Описание"
+    ]
+
+
+def test_search_by_phone_numbers_formats(sample_transactions):
+    """Тест проверяет, что находятся все валидные форматы мобильных номеров."""
+    result = search_by_phone_numbers(sample_transactions)
+
+    # Должны найтись транзакции с ID: 1, 2, 3, 7
+    assert len(result) == 4
+
+    found_ids = [tx["id"] for tx in result]
+    assert 1 in found_ids  # +7 912 345-67-89
+    assert 2 in found_ids  # 89998887766
+    assert 3 in found_ids  # +7(900)123-45-67
+    assert 7 in found_ids  # +7 999 111 22 33
+
+
+def test_search_by_phone_numbers_exclusions(sample_transactions):
+    """Тест проверяет, что городские номера и неполные номера игнорируются."""
+    result = search_by_phone_numbers(sample_transactions)
+    found_ids = [tx["id"] for tx in result]
+
+    assert 5 not in found_ids  # Код 495 (городской) должен отсекаться
+    assert 6 not in found_ids  # Без +7 или 8 в начале не должно подходить
+
+
+def test_search_by_phone_numbers_empty_data():
+    """Тест сценария, когда на вход подан пустой список."""
+    assert search_by_phone_numbers([]) == []

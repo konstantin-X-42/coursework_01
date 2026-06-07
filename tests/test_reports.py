@@ -1,7 +1,9 @@
 #--------------------------------------------------
 #----- 11. Сервисы---ОСНОВНАЯ----------------------
 #--------------------------------------------------
-
+# запуск тестов
+# pytest tests/test_reports.py
+#--------------------------------------------------
 import os
 import pytest
 import pandas as pd
@@ -46,6 +48,7 @@ def test_decorator_saves_file(sample_dataframe, tmp_path, monkeypatch):
 
     expected_file = tmp_path / "test_output.xlsx"
     assert expected_file.exists()
+
 
 #--------------------------------------------------
 #----- 12. Сервисы---Доп Траты по категории--------
