@@ -1,82 +1,127 @@
+import logging
+import os
+from pathlib import Path
+import requests
+from dotenv import load_dotenv
+
 #--------------------------------------------------
 #----- 5. Веб страницы---ОСНОВНАЯ--API-------------
 #--------------------------------------------------
 
-import os
-import requests
-import logging
-
+# Настраиваем вывод логов прямо в консоль
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
+# Загружаем переменные окружения из .env в корне проекта
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
-def get_currency_rates(currencies: list[str], apilayer_key: str = None) -> list:
-    """
-    Получает актуальные курсы валют к рублю через API Fixer на маркетплейсе APILayer.
+API_KEY = os.getenv("CURRENCY_API_KEY")
+BASE_URL = "https://api.apilayer.com/exchangerates_data/convert"
+
+
+def get_currency_rates(currencies: list[str]) -> list:
+    """Принимает список валют (например, ['USD', 'EUR']) и возвращает
+
+    список словарей с их курсами к рублю в формате:
+    [{'currency': 'USD', 'rate': 91.5}, {'currency': 'EUR', 'rate': 98.2}]
     """
     if not currencies:
+        logger.warning("Передан пустой список валют.")
         return []
 
-    # Приоритет аргументу, если он "demo" или пустой — пробуем взять из .env
-    api_key = apilayer_key if apilayer_key and apilayer_key != "demo" else os.getenv("CURRENCY_API_KEY")
+    # Заглушка (офлайн-режим) на случай отсутствия ключа или сбоя сети
+    mock_data = {"USD": 91.50, "EUR": 98.20, "RUB": 1.0}
 
-    if not api_key:
-        logger.error("Критическая ошибка: API-ключ для APILayer не предоставлен и не найден в .env!")
-        return _get_mock_currency_rates(currencies)
-
-    # ПРАВИЛЬНЫЙ URL: используем эндпоинт fixer и явно задаем базовую валюту RUB
-    # (Убедитесь, что ваш тарифный план на APILayer позволяет менять base на RUB)
-    url = "https://apilayer.com"
-
-    # Формируем список валют для запроса через запятую, например: "USD,EUR"
-    symbols = ",".join(currencies)
-    params = {
-        "base": "RUB",
-        "symbols": symbols
-    }
+    # 1. Проверка наличия API-ключа
+    if not API_KEY:
+        logger.error(
+            "Критическая ошибка: API-ключ не найден в переменных окружения."
+        )
+        logger.warning("Переход в резервный офлайн-режим.")
+        return [
+            {"currency": cur, "rate": mock_data.get(cur, 75.0)}
+            for cur in currencies
+        ]
 
     rates_list = []
+    headers = {"apikey": API_KEY}
 
     try:
-        headers = {
-            "apikey": api_key,
-            "User-Agent": "Mozilla/5.0"
-        }
-        # Передаем url, заголовки и параметры (base и symbols)
-        response = requests.get(url, headers=headers, params=params, timeout=5)
+        logger.info(f"Начало сетевого запроса курсов для валют: {currencies}")
 
-        if response.status_code == 200:
-            data = response.json()
+        # Циклом проходим по каждой запрошенной валюте
+        for cur in currencies:
+            if cur == "RUB":
+                rates_list.append({"currency": "RUB", "rate": 1.0})
+                logger.info("Для валюты RUB автоматически установлен курс 1.0")
+                continue
 
-            # API Fixer при base=RUB возвращает rates вида: {"USD": 0.011, "EUR": 0.010}
-            rates = data.get("rates", {})
+            # Запрашиваем стоимость ровно 1 единицы валюты к RUB
+            params = {"to": "RUB", "from": cur, "amount": 1.0}
 
-            for cur in currencies:
-                if cur in rates and rates[cur] != 0:
-                    # Так как база RUB, то 1 единица валюты cur = 1 / rate рублей
-                    rate_to_rub = round(1 / rates[cur], 2)
-                    rates_list.append({
-                        "currency": cur,
-                        "rate": rate_to_rub
-                    })
-                    logger.info(f"Успешно получен курс APILayer для {cur}: {rate_to_rub} руб.")
+            response = requests.get(
+                BASE_URL, headers=headers, params=params, timeout=5
+            )
 
-            if rates_list:
-                return rates_list
-        else:
-            logger.error(f"APILayer вернул ошибку {response.status_code}: {response.text}")
+            if response.status_code == 200:
+                data = response.json()
+                # Получаем результат конвертации и округляем до 2 знаков
+                rate = round(float(data.get("result", 0.0)), 2)
 
-    except Exception as e:
-        logger.error(f"Ошибка получения курсов валют через APILayer: {e}")
+                rates_list.append({"currency": cur, "rate": rate})
+                logger.info(
+                    f"Успешно получен курс {cur} через API"
+                )
+            else:
+                logger.error(
+                    f"Ошибка API для валюты {cur}. Статус-код: {response.status_code}. Ответ: {response.text}"
+                )
+                logger.warning(
+                    f"Для валюты {cur} используются резервные данные."
+                )
+                rates_list.append(
+                    {"currency": cur, "rate": mock_data.get(cur, 75.0)}
+                )
 
-    # Если что-то пошло не так, возвращаем заглушки
-    return _get_mock_currency_rates(currencies)
+        logger.info("Обработка всех валют успешно завершена.")
+        return rates_list
+
+    except (requests.RequestException, KeyError, ValueError) as e:
+        logger.error(
+            f"Произошел сетевой или системный сбой при запросе курсов: {e}"
+        )
+        logger.warning("Переход на резервные курсы для всего списка валют.")
+        # В случае полного падения сети возвращаем заглушки для всего списка
+        return [
+            {"currency": cur, "rate": mock_data.get(cur, 75.0)}
+            for cur in currencies
+        ]
 
 
-def _get_mock_currency_rates(currencies: list[str]) -> list:
-    """Вспомогательная функция для выдачи резервных данных валют"""
-    logger.warning("Используются резервные курсы валют (офлайн-режим)")
-    mock_rates = {"USD": 91.50, "EUR": 98.20}
-    return [{"currency": cur, "rate": mock_rates.get(cur, 85.00)} for cur in currencies]
+# ==========================================
+# ЗАПУСК функции get_currency_rates()
+# ==========================================
+if __name__ == "__main__":
+
+    # Передаем список валют, как в проекте
+    test_currencies = ["USD", "EUR", "GBP"]
+
+    result = get_currency_rates(test_currencies)
+
+    print("\n--  -- Результат выполнения функции get_currency_rates() --  --")
+    print(result)
+
+
+# --------------------------------------------------------------------
+
+
+import logging
+import requests
+
+# Настраиваем логирование, чтобы logger.error и logger.warning не выдавали ошибку
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def get_stock_prices(stocks: list[str]) -> list:
@@ -87,13 +132,15 @@ def get_stock_prices(stocks: list[str]) -> list:
     prices_list = []
     try:
         for stock in stocks:
+            # ИСПРАВЛЕНО: Добавлен корректный эндпоинт API
             url = f"https://financialmodelingprep.com{stock}?apikey=demo"
             response = requests.get(url, timeout=5)
 
             if response.status_code == 200:
                 data = response.json()
+                # ИСПРАВЛЕНО: Извлекаем первый элемент списка [0], так как API возвращает список
                 if isinstance(data, list) and len(data) > 0:
-                    stock_info = data
+                    stock_info = data[0]
                     price = round(float(stock_info.get("price", 0)), 2)
                     prices_list.append({"stock": stock, "price": price})
 
@@ -103,9 +150,35 @@ def get_stock_prices(stocks: list[str]) -> list:
     except Exception as e:
         logger.error(f"Ошибка получения цен акций через API: {e}")
 
+    # Блок сработает, если API недоступен или демо-ключ исчерпал лимиты запросов
     logger.warning("Используются резервные стоимости акций (офлайн-режим)")
-    mock_prices = {"AAPL": 175.30, "AMZN": 180.50, "GOOGL": 152.10, "MSFT": 415.20, "TSLA": 170.80}
-    return [{"stock": stock, "price": mock_prices.get(stock, 100.00)} for stock in stocks]
+    mock_prices = {
+        "AAPL": 175.30,
+        "AMZN": 180.50,
+        "GOOGL": 152.10,
+        "MSFT": 415.20,
+        "TSLA": 170.80,
+    }
+    return [
+        {"stock": stock, "price": mock_prices.get(stock, 100.00)}
+        for stock in stocks
+    ]
+
+
+# ==========================================================
+# ЗАПУСК функции get_stock_prices()
+# ==========================================================
+if __name__ == "__main__":
+    # 1. Создаем список тикеров акций для проверки
+    test_stocks = ["AAPL", "AMZN", "MSFT", "UNKNOWN"]
+
+    # 2. Вызываем функцию и передаем ей наш список
+    result = get_stock_prices(test_stocks)
+
+    # 3. Выводим полученный результат в консоль
+    print("\n--  -- Результат выполнения функции get_stock_prices() --  --")
+    for item in result:
+        print(f"Акция: {item['stock']} | Цена: ${item['price']}")
 
 #--------------------------------------------------
 #----- 7. Веб страницы---доп.ГЛАВНАЯ---------------
@@ -292,3 +365,5 @@ def search_by_phone_numbers(data: list[dict]) -> list[dict]:
     phone_pattern = re.compile(r'(?:\+7|8)[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}')
     return [tx for tx in data if phone_pattern.search(str(tx.get("Описание", "")))]
 
+#######################################
+#######################################

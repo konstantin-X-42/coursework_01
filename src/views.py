@@ -167,7 +167,7 @@ def generate_json_response(date_str: str) -> dict:
 
     # 4. Запрос внешних API с защитой от сбоев
     try:
-        currency_data = get_currency_rates(currencies, apilayer_key)
+        currency_data = get_currency_rates(currencies)
     except Exception as e:
         logging.error(f"Ошибка получения курсов валют: {e}")
         currency_data = []
