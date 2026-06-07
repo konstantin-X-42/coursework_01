@@ -22,7 +22,6 @@ BASE_URL = "https://api.apilayer.com/exchangerates_data/convert"
 
 def get_currency_rates(currencies: list[str]) -> list:
     """Принимает список валют (например, ['USD', 'EUR']) и возвращает
-
     список словарей с их курсами к рублю в формате:
     [{'currency': 'USD', 'rate': 91.5}, {'currency': 'EUR', 'rate': 98.2}]
     """
@@ -397,64 +396,3 @@ def search_by_phone_numbers(data: list[dict]) -> str:
 #     print("\n=== РЕЗУЛЬТАТ РАБОТЫ ФУНКЦИИ ===")
 #     print(json_result)
 
-#--------------------------------------------------
-#----- 13. main------------------------------------
-#--------------------------------------------------
-
-import re
-
-import re
-import logging
-
-# Настройка логгера для текущего модуля
-logger = logging.getLogger(__name__)
-
-
-def search_by_phone_numbers(data: list[dict]) -> list[dict]:
-    """Возвращает транзакции, содержащие мобильные номера, включая форматы со скобками."""
-    logger.info(f"Старт поиска транзакций по мобильным номерам. Всего на входе: {len(data)}")
-
-    if not data:
-        logger.warning("На вход передан пустой список транзакций.")
-        return []
-
-    # Шаблон находит +79..., 89..., +7 (900) 000-00-00, +7 900 000 00 00
-    phone_pattern = re.compile(r'(?:\+7|8)[\s\-]?\(?9\d{2}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}')
-
-    result = []
-    for tx in data:
-        description = str(tx.get("Описание", ""))
-        match = phone_pattern.search(description)
-
-        if match:
-            # Логируем на уровне DEBUG конкретный найденный номер для удобства отладки
-            logger.debug(f"Найден номер телефона '{match.group()}' в транзакции ID: {tx.get('id', 'Не указан')}")
-            result.append(tx)
-
-    logger.info(f"Поиск завершен. Успешно найдено транзакций с номерами: {len(result)}")
-    return result
-
-# ==========================================
-# ЗАПУСК функции search_by_phone_numbers()
-# ==========================================
-# if __name__ == "__main__":
-#     print("=== ЗАПУСК ФУНКЦИИ ПОИСКА ПО ТЕЛЕФОНАМ    search_by_phone_numbers() ===\n")
-#
-#     # Имитируем входящую базу транзакций
-#     transactions_pool = [
-#         {"id": 101, "Описание": "Перевод Ивану по номеру +7 912 345-67-89"},
-#         {"id": 102, "Описание": "Оплата мобильной связи 89998887766"},
-#         {"id": 103, "Описание": "Покупка в магазине Продукты"},
-#         {"id": 104, "Описание": "Звонок в техподдержку банка +7 (900) 123-45-67"}
-#     ]
-#
-#     # Вызываем функцию
-#     filtered_transactions = search_by_phone_numbers(transactions_pool)
-#
-#     print("\nРезультат фильтрации в памяти:")
-#     for tx in filtered_transactions:
-#         print(f" -> ID {tx['id']}: {tx['Описание']}")
-#
-#     # Делаем быструю встроенную проверку (должно совпасть 3 транзакции из 4)
-#     assert len(filtered_transactions) == 3, f"Ошибка: ожидалось 3, найдено {len(filtered_transactions)}"
-#     print("\n=== ЛОКАЛЬНЫЙ ЗАПУСК УСПЕШНО ПРОЙДЕН ===")

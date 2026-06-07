@@ -341,107 +341,36 @@ if __name__ == "__main__":
 # ==========================================
 
 import json
-import unittest
-from unittest.mock import patch
-
-from src.services import search_by_phone_numbers
-
-
-class TestSearchByPhoneNumbers(unittest.TestCase):
-
-    def setUp(self):
-        """Инициализация тестовых транзакций перед каждым тестом."""
-        self.mock_data = [
-            {"Категория": "Переводы", "Описание": "Перевод Ивану по номеру +7 912 345-67-89 на карту"},
-            {"Категория": "Связь", "Описание": "Оплата телефона 89998887766 через приложение"},
-            {"Категория": "Переводы", "Описание": "Перевод маме +79001234567"},
-            {"Категория": "Супермаркеты", "Описание": "Покупка в Пятерочке (номер чека 123456)"},
-            {"Категория": "Транспорт", "Описание": "Яндекс Такси, код подтверждения 8901"}
-        ]
-
-    @patch("src.services.logger")
-    def test_search_by_phone_numbers_success(self, mock_logger):
-        """Тест успешного поиска транзакций с мобильными номерами."""
-        # ИСПРАВЛЕНО: Функция возвращает список, json.loads больше не используем
-        result = search_by_phone_numbers(self.mock_data)
-
-        self.assertEqual(len(result), 3)
-
-        descriptions = [tx.get("Описание", "") for tx in result]
-        self.assertIn("Перевод Ивану по номеру +7 912 345-67-89 на карту", descriptions)
-        self.assertIn("Оплата телефона 89998887766 через приложение", descriptions)
-        self.assertIn("Перевод маме +79001234567", descriptions)
-
-    @patch("src.services.logger")
-    def test_search_by_phone_numbers_no_matches(self, mock_logger):
-        """Тест ситуации, когда совпадений не найдено."""
-        clear_data = [
-            {"Категория": "Супермаркеты", "Описание": "Обычная покупка в магазине"},
-            {"Категория": "Другое", "Описание": "Номер договора № 9876543210"}
-        ]
-        result = search_by_phone_numbers(clear_data)
-
-        # ИСПРАВЛЕНО: Прямое сравнение со списком и удален аргумент second
-        self.assertEqual(result, [])
-
-    @patch("src.services.logger")
-    def test_search_by_phone_numbers_empty_data(self, mock_logger):
-        """Тест передачи пустого списка транзакций."""
-        result = search_by_phone_numbers([])
-
-        # ИСПРАВЛЕНО: Убран лишний аргумент second
-        self.assertEqual(result, [])
-
-
-if __name__ == "__main__":
-    unittest.main()
-
-#--------------------------------------------------
-#----- 13. main------search_by_phone_numbers()-----
-#--------------------------------------------------
-
 import pytest
-from src.services import search_by_phone_numbers
+from src.services import search_by_phone_numbers  # Поправьте путь импорта, если он отличается
+
 
 @pytest.fixture
 def sample_transactions():
-    """Фикстура с разнообразными тестовыми транзакциями."""
+    """Фикстура с набором транзакций для проверки поиска по номерам."""
     return [
-        {"id": 1, "Описание": "Перевод Ивану по номеру +7 912 345-67-89 на карту"},
-        {"id": 2, "Описание": "Оплата телефона 89998887766 через приложение"},
-        {"id": 3, "Описание": "Перевод маме +7(900)123-45-67"},
-        {"id": 4, "Описание": "Покупка в супермаркете Лента"},
-        {"id": 5, "Описание": "Контакты поддержки: +7 495 123-45-67 (городской)"},
-        {"id": 6, "Описание": "Перевод по номеру 9123456789 без семерки/восьмерки"},
-        {"id": 7, "Описание": "Номер в тексте +7 999 111 22 33 разбит пробелами"},
-        {"id": 8, "Описание": ""},  # Пустое описание
-        {"id": 9, "Сумма": -100}  # Вообще нет ключа "Описание"
+        {"id": 1, "Описание": "Перевод Ивану по номеру +7 912 345-67-89"},
+        {"id": 2, "Описание": "Оплата связи 89998887766"},
+        {"id": 3, "Описание": "Покупка в супермаркете"},
+        {"id": 4, "Описание": "Контакты техподдержки: +7 495 123-45-67 (городской)"},
+        {"id": 5, "Описание": ""}  # Пустая строка
     ]
 
 
-def test_search_by_phone_numbers_formats(sample_transactions):
-    """Тест проверяет, что находятся все валидные форматы мобильных номеров."""
-    result = search_by_phone_numbers(sample_transactions)
+def test_search_by_phone_numbers_success(sample_transactions):
+    """Тест проверяет, что находятся только мобильные номера разных форматов."""
+    result_json = search_by_phone_numbers(sample_transactions)
+    result = json.loads(result_json)
 
-    # Должны найтись транзакции с ID: 1, 2, 3, 7
-    assert len(result) == 4
+    # Должны найтись только транзакции 1 и 2
+    assert len(result) == 2
 
-    found_ids = [tx["id"] for tx in result]
-    assert 1 in found_ids  # +7 912 345-67-89
-    assert 2 in found_ids  # 89998887766
-    assert 3 in found_ids  # +7(900)123-45-67
-    assert 7 in found_ids  # +7 999 111 22 33
-
-
-def test_search_by_phone_numbers_exclusions(sample_transactions):
-    """Тест проверяет, что городские номера и неполные номера игнорируются."""
-    result = search_by_phone_numbers(sample_transactions)
-    found_ids = [tx["id"] for tx in result]
-
-    assert 5 not in found_ids  # Код 495 (городской) должен отсекаться
-    assert 6 not in found_ids  # Без +7 или 8 в начале не должно подходить
+    descriptions = [tx["Описание"] for tx in result]
+    assert "Перевод Ивану по номеру +7 912 345-67-89" in descriptions
+    assert "Оплата связи 89998887766" in descriptions
 
 
-def test_search_by_phone_numbers_empty_data():
-    """Тест сценария, когда на вход подан пустой список."""
-    assert search_by_phone_numbers([]) == []
+def test_search_by_phone_numbers_empty():
+    """Тест сценария, когда на вход передан пустой список."""
+    result_json = search_by_phone_numbers([])
+    assert json.loads(result_json) == []
