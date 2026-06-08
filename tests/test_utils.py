@@ -1,21 +1,23 @@
-import json
 import datetime
-import pytest
+import json
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open, patch
 
-from src.utils import get_month_range, load_user_settings, get_greeting
+import pytest
 
-#--------------------------------------------------
-#----- 4. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
+from src.utils import get_greeting, get_month_range, load_user_settings
+
+# --------------------------------------------------
+# ----- 4. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 # запуск тестов
 # pytest tests/test_utils.py
-#--------------------------------------------------
+# --------------------------------------------------
 
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    get_month_range()
 # ==========================================
+
 
 def test_get_month_range_success():
     """1. Тест успешного вычисления диапазона дат для обычной даты"""
@@ -38,12 +40,15 @@ def test_get_month_range_first_day():
     assert end == datetime.datetime(2024, 5, 1)
 
 
-@pytest.mark.parametrize("invalid_date", [
-    "32.12.2021",  # Несуществующий день
-    "15-12-2021",  # Неверный разделитель
-    "2021.12.15",  # Неверный порядок (ГГГГ.ММ.ДД)
-    "строка"  # Вообще не дата
-])
+@pytest.mark.parametrize(
+    "invalid_date",
+    [
+        "32.12.2021",  # Несуществующий день
+        "15-12-2021",  # Неверный разделитель
+        "2021.12.15",  # Неверный порядок (ГГГГ.ММ.ДД)
+        "строка",  # Вообще не дата
+    ],
+)
 def test_get_month_range_invalid_format(invalid_date):
     """3. Тест, что функция выбрасывает ValueError при ошибках формата"""
     with pytest.raises(ValueError) as exc_info:
@@ -59,9 +64,11 @@ def test_get_month_range_empty_date():
 
     assert str(exc_info.value) == "Параметр даты обязателен"
 
+
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    load_user_settings()
 # ==========================================
+
 
 def test_load_user_settings_file_not_exists():
     """4. Тест поведения функции, если файл настроек отсутствует (должен вернуть дефолты)"""
@@ -76,14 +83,17 @@ def test_load_user_settings_file_not_exists():
 def test_load_user_settings_success():
     """5. Тест успешного чтения корректного файла настроек"""
     # Создаем мок-данные, которые должен вернуть файл
-    mock_data = json.dumps({
-        "user_currencies": ["USD", "EUR", "RUB"],
-        "user_stocks": ["AAPL", "GOOGL", "MSFT"]
-    })
+    mock_data = json.dumps(
+        {
+            "user_currencies": ["USD", "EUR", "RUB"],
+            "user_stocks": ["AAPL", "GOOGL", "MSFT"],
+        }
+    )
 
     # Имитируем, что файл существует и читаем наши мок-данные
-    with patch("os.path.exists", return_value=True), \
-            patch("builtins.open", mock_open(read_data=mock_data)):
+    with patch("os.path.exists", return_value=True), patch(
+        "builtins.open", mock_open(read_data=mock_data)
+    ):
         currencies, stocks = load_user_settings("user_settings.json")
 
         assert currencies == ["USD", "EUR", "RUB"]
@@ -92,25 +102,26 @@ def test_load_user_settings_success():
 
 def test_load_user_settings_empty_keys():
     """6. Тест ситуации, когда JSON корректный, но нужные ключи внутри отсутствуют"""
-    mock_data = json.dumps({
-        "some_other_key": "value"
-    })
+    mock_data = json.dumps({"some_other_key": "value"})
 
-    with patch("os.path.exists", return_value=True), \
-            patch("builtins.open", mock_open(read_data=mock_data)):
+    with patch("os.path.exists", return_value=True), patch(
+        "builtins.open", mock_open(read_data=mock_data)
+    ):
         currencies, stocks = load_user_settings("user_settings.json")
 
         # Проверяем, что вернулись пустые списки по дефолту из .get()
         assert currencies == []
         assert stocks == []
 
-#--------------------------------------------------
-#----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
-#--------------------------------------------------
+
+# --------------------------------------------------
+# ----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
+# --------------------------------------------------
 
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    get_greeting()
 # ==========================================
+
 
 class TestGetGreeting(unittest.TestCase):
 

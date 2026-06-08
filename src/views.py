@@ -1,17 +1,24 @@
-import os
 import json
 import logging
-import pandas as pd
+import os
 from datetime import datetime
-from src.utils import get_month_range, load_user_settings, get_greeting, parse_incoming_datetime
-from src.services import get_currency_rates, get_stock_prices
 
-#--------------------------------------------------
-#----- 1. Веб страницы---ОСНОВНАЯ------------------
-#--------------------------------------------------
+import pandas as pd
+
+from src.services import get_currency_rates, get_stock_prices
+from src.utils import (
+    get_greeting,
+    get_month_range,
+    load_user_settings,
+    parse_incoming_datetime,
+)
+
+# --------------------------------------------------
+# ----- 1. Веб страницы---ОСНОВНАЯ------------------
+# --------------------------------------------------
 # запуск функций в модуле
 # python -m src.views
-#--------------------------------------------------
+# --------------------------------------------------
 
 # Директория, где лежит текущий файл (src)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,9 +38,12 @@ def analytics_view(date_param: str) -> dict:
     try:
         start_date, end_date = get_month_range(date_param)
         logging.info(
-            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}")
+            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}"
+        )
     except ValueError as e:
-        logging.error(f"Ошибка вычисления диапазона дат для значения '{date_param}': {e}")
+        logging.error(
+            f"Ошибка вычисления диапазона дат для значения '{date_param}': {e}"
+        )
         return {"error": str(e)}
 
     # Проверка физического наличия Excel-файла
@@ -47,30 +57,36 @@ def analytics_view(date_param: str) -> dict:
         df = pd.read_excel(EXCEL_PATH)
 
         # Конвертируем колонку дат. dayfirst=True корректно парсит российский формат
-        df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+        df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
 
         # Настраиваем правую границу, чтобы захватить весь последний день месяца до 23:59:59
         end_date_full = pd.to_datetime(end_date).replace(hour=23, minute=59, second=59)
 
         # Фильтрация по диапазону дат
-        filtered_df = df[(df['Дата операции'] >= pd.to_datetime(start_date)) &
-                         (df['Дата операции'] <= end_date_full)]
+        filtered_df = df[
+            (df["Дата операции"] >= pd.to_datetime(start_date))
+            & (df["Дата операции"] <= end_date_full)
+        ]
 
         # Сортировка от новых к старым
-        filtered_df = filtered_df.sort_values(by='Дата операции', ascending=False)
+        filtered_df = filtered_df.sort_values(by="Дата операции", ascending=False)
 
         # Превращаем даты обратно в строковый формат для JSON-ответа
         if not filtered_df.empty:
-            filtered_df['Дата операции'] = filtered_df['Дата операции'].dt.strftime("%d.%m.%Y %H:%M:%S")
+            filtered_df["Дата операции"] = filtered_df["Дата операции"].dt.strftime(
+                "%d.%m.%Y %H:%M:%S"
+            )
 
         # Заменяем пустые ячейки (NaN) на None, иначе json.dumps() выдаст ошибку float('NaN')
-        filtered_df = filtered_df.replace({pd.NA: None, float('nan'): None})
+        filtered_df = filtered_df.replace({pd.NA: None, float("nan"): None})
 
         # Преобразуем DataFrame в список словарей
         payload = filtered_df.to_dict(orient="records")
 
         # Лог успешного завершения обработки данных
-        logging.info(f"Данные успешно отфильтрованы. Найдено операций за период: {len(payload)}")
+        logging.info(
+            f"Данные успешно отфильтрованы. Найдено операций за период: {len(payload)}"
+        )
 
     except Exception as e:
         logging.error(f"Критическая ошибка при обработке Excel: {e}", exc_info=True)
@@ -82,8 +98,9 @@ def analytics_view(date_param: str) -> dict:
         "input_date": date_param,
         "range_start": start_date.strftime("%d.%m.%Y"),
         "range_end": end_date.strftime("%d.%m.%Y"),
-        "payload": payload
+        "payload": payload,
     }
+
 
 # --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 # --  --  -- ЗАПУСК ФУНКЦИИ --  analytics_view()  --  --  --  --  --  --  --  --
@@ -106,16 +123,17 @@ def analytics_view(date_param: str) -> dict:
 #     print(json.dumps(result, indent=4, ensure_ascii=False))
 
 
-#--------------------------------------------------
-#----- 3. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 3. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 
-import os
 import json
 import logging
+import os
 from datetime import datetime
-from src.utils import get_month_range, load_user_settings
+
 from src.services import get_currency_rates, get_stock_prices
+from src.utils import get_month_range, load_user_settings
 
 # Автоматически определяем директорию текущего файла, чтобы избежать NameError
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +145,9 @@ SETTINGS_FILE = os.path.abspath(os.path.join(CURRENT_DIR, "..", "user_settings.j
 def generate_json_response(date_str: str) -> dict:
     """Генерирует данные по курсам валют и акциям на основе настроек пользователя"""
 
-    logging.info(f"Начало вызова generate_json_response с параметром date_str='{date_str}'")
+    logging.info(
+        f"Начало вызова generate_json_response с параметром date_str='{date_str}'"
+    )
 
     if not date_str:
         logging.warning("Параметр date_str отсутствует или пустой")
@@ -137,7 +157,8 @@ def generate_json_response(date_str: str) -> dict:
     try:
         start_date, end_date = get_month_range(date_str)
         logging.info(
-            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}")
+            f"Успешно вычислен диапазон дат: {start_date.strftime('%d.%m.%Y')} — {end_date.strftime('%d.%m.%Y')}"
+        )
     except ValueError as e:
         logging.error(f"Ошибка вычисления диапазона дат для значения '{date_str}': {e}")
         return {"error": str(e)}
@@ -157,7 +178,9 @@ def generate_json_response(date_str: str) -> dict:
             settings_data = json.load(f)
         apilayer_key = settings_data.get("apilayer_key", "demo")
 
-        logging.info(f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}")
+        logging.info(
+            f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}"
+        )
     except json.JSONDecodeError as e:
         logging.error(f"Некорректный формат JSON в файле настроек: {e}")
         return {"error": "Файл настроек поврежден (неверный JSON)"}
@@ -185,11 +208,12 @@ def generate_json_response(date_str: str) -> dict:
         "status": "success",
         "analysis_period": {
             "start": start_date.strftime("%d.%m.%Y"),
-            "end": end_date.strftime("%d.%m.%Y")
+            "end": end_date.strftime("%d.%m.%Y"),
         },
         "currencies_exchange_rub": currency_data,
-        "stock_prices_usd": stock_data
+        "stock_prices_usd": stock_data,
     }
+
 
 # --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 # --  --  -- ЗАПУСК ФУНКЦИИ --  generate_json_response()  --  --  --  --  --  --
@@ -200,7 +224,9 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     test_date = "15.12.2021"
-    print(f"\n--- Запуск проверки функции generate_json_response для даты: {test_date} ---\n")
+    print(
+        f"\n--- Запуск проверки функции generate_json_response для даты: {test_date} ---\n"
+    )
 
     # Вызываем функцию
     result_data = generate_json_response(test_date)
@@ -208,18 +234,20 @@ if __name__ == "__main__":
     # Печатаем итоговый JSON-словарь в терминал
     print(json.dumps(result_data, indent=4, ensure_ascii=False))
 
-#--------------------------------------------------
-#----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
+# --------------------------------------------------
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Пути к файлам относительно структуры проекта
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-SETTINGS_FILE = os.path.join(BASE_DIR, '../user_settings.json')
-EXCEL_FILE = os.path.join(BASE_DIR, '../data', 'operations.xlsx')
+SETTINGS_FILE = os.path.join(BASE_DIR, "../user_settings.json")
+EXCEL_FILE = os.path.join(BASE_DIR, "../data", "operations.xlsx")
 
 
 def generate_main_page_json(date_str: str) -> dict:
@@ -242,47 +270,57 @@ def generate_main_page_json(date_str: str) -> dict:
             logger.info(f"Чтение файла данных: {EXCEL_FILE}")
             # Читаем Excel, преобразуем колонку с датой в тип datetime
             df = pd.read_excel(EXCEL_FILE)
-            df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+            df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
 
             # Фильтруем данные: с 1-го числа месяца по входящую дату включительно
-            mask = (df['Дата операции'] >= start_date) & (df['Дата операции'] <= end_date)
+            mask = (df["Дата операции"] >= start_date) & (
+                df["Дата операции"] <= end_date
+            )
             df_filtered = df[mask].copy()
 
             # 1. Расчет по картам (только расходы/платежи, обычно это отрицательные или целевые суммы)
             # Предположим, расходы в колонке 'Сумма платежа' идут со знаком минус или фильтруются по типу
             # Для примера берем модуль расходов, если они отрицательные, либо просто фильтруем расходы:
-            df_expenses = df_filtered[df_filtered['Сумма платежа'] < 0].copy()
-            df_expenses['Сумма платежа'] = df_expenses['Сумма платежа'].abs()
+            df_expenses = df_filtered[df_filtered["Сумма платежа"] < 0].copy()
+            df_expenses["Сумма платежа"] = df_expenses["Сумма платежа"].abs()
 
-            if not df_expenses.empty and 'Номер карты' in df_expenses.columns:
+            if not df_expenses.empty and "Номер карты" in df_expenses.columns:
                 # Группируем по картам
-                grouped = df_expenses.groupby('Номер карты')['Сумма платежа'].sum().reset_index()
+                grouped = (
+                    df_expenses.groupby("Номер карты")["Сумма платежа"]
+                    .sum()
+                    .reset_index()
+                )
                 for _, row in grouped.iterrows():
-                    card_num = str(row['Номер карты']).strip()
-                    if card_num and card_num != 'nan':
+                    card_num = str(row["Номер карты"]).strip()
+                    if card_num and card_num != "nan":
                         # Берем последние 4 знака (удаляем звездочки если они есть)
                         last_4 = card_num[-4:] if len(card_num) >= 4 else card_num
-                        total_spent = round(float(row['Сумма платежа']), 2)
+                        total_spent = round(float(row["Сумма платежа"]), 2)
                         # Кешбэк: 1 рубль на каждые 100 рублей расходов
                         cashback = round(total_spent / 100, 2)
 
-                        cards_list.append({
-                            "last_digits": last_4,
-                            "total_spent": total_spent,
-                            "cashback": cashback
-                        })
+                        cards_list.append(
+                            {
+                                "last_digits": last_4,
+                                "total_spent": total_spent,
+                                "cashback": cashback,
+                            }
+                        )
 
             # 2. Топ-5 транзакций по сумме платежа (по модулю или по абсолютной величине расходов)
-            df_filtered['Abs_Amount'] = df_filtered['Сумма платежа'].abs()
-            df_top = df_filtered.sort_values(by='Abs_Amount', ascending=False).head(5)
+            df_filtered["Abs_Amount"] = df_filtered["Сумма платежа"].abs()
+            df_top = df_filtered.sort_values(by="Abs_Amount", ascending=False).head(5)
 
             for _, row in df_top.iterrows():
-                top_transactions.append({
-                    "date": row['Дата операции'].strftime("%d.%m.%Y"),
-                    "amount": round(float(row['Сумма платежа']), 2),
-                    "category": str(row.get('Категория', 'Без категории')),
-                    "description": str(row.get('Описание', ''))
-                })
+                top_transactions.append(
+                    {
+                        "date": row["Дата операции"].strftime("%d.%m.%Y"),
+                        "amount": round(float(row["Сумма платежа"]), 2),
+                        "category": str(row.get("Категория", "Без категории")),
+                        "description": str(row.get("Описание", "")),
+                    }
+                )
 
         except Exception as e:
             logger.error(f"Ошибка обработки Excel: {e}")
@@ -300,27 +338,30 @@ def generate_main_page_json(date_str: str) -> dict:
         "cards": cards_list,
         "top_transactions": top_transactions,
         "currency_rates": currency_rates,
-        "stock_prices": stock_prices
+        "stock_prices": stock_prices,
     }
 
     logger.info("Генерация отчета успешно завершена.")
     return response
 
-#--------------------------------------------------
-#----- 14. main------------------------------------
-#--------------------------------------------------
 
-import os
+# --------------------------------------------------
+# ----- 14. main------------------------------------
+# --------------------------------------------------
+
 import logging
+import os
+
 import pandas as pd
-from src.utils import parse_incoming_datetime, get_greeting, load_user_settings
+
 from src.services import get_currency_rates, get_stock_prices
+from src.utils import get_greeting, load_user_settings, parse_incoming_datetime
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SETTINGS_FILE = os.path.abspath(os.path.join(BASE_DIR, '../user_settings.json'))
-EXCEL_FILE = os.path.abspath(os.path.join(BASE_DIR, '../data', 'operations.xlsx'))
+SETTINGS_FILE = os.path.abspath(os.path.join(BASE_DIR, "../user_settings.json"))
+EXCEL_FILE = os.path.abspath(os.path.join(BASE_DIR, "../data", "operations.xlsx"))
 
 
 def generate_main_page_data(date_str: str) -> dict:
@@ -340,42 +381,54 @@ def generate_main_page_data(date_str: str) -> dict:
     if os.path.exists(EXCEL_FILE):
         try:
             df = pd.read_excel(EXCEL_FILE)
-            df['Дата операции'] = pd.to_datetime(df['Дата операции'], dayfirst=True)
+            df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
 
             # Фильтруем успешные транзакции за указанный период
-            mask = (df['Дата операции'] >= start_date) & (df['Дата операции'] <= end_date) & (df['Статус'] == 'OK')
+            mask = (
+                (df["Дата операции"] >= start_date)
+                & (df["Дата операции"] <= end_date)
+                & (df["Статус"] == "OK")
+            )
             df_filtered = df[mask].copy()
 
             # 1. Анализ карт (Только расходы)
-            df_expenses = df_filtered[df_filtered['Сумма платежа'] < 0].copy()
-            if not df_expenses.empty and 'Номер карты' in df_expenses.columns:
-                df_expenses['Сумма_abs'] = df_expenses['Сумма платежа'].abs()
-                grouped = df_expenses.groupby('Номер карты')['Сумма_abs'].sum().reset_index()
+            df_expenses = df_filtered[df_filtered["Сумма платежа"] < 0].copy()
+            if not df_expenses.empty and "Номер карты" in df_expenses.columns:
+                df_expenses["Сумма_abs"] = df_expenses["Сумма платежа"].abs()
+                grouped = (
+                    df_expenses.groupby("Номер карты")["Сумма_abs"].sum().reset_index()
+                )
 
                 for _, row in grouped.iterrows():
-                    raw_card = str(row['Номер карты']).split('.')[0].strip()  # Очищаем от .0 если float
-                    if raw_card and raw_card != 'nan':
+                    raw_card = (
+                        str(row["Номер карты"]).split(".")[0].strip()
+                    )  # Очищаем от .0 если float
+                    if raw_card and raw_card != "nan":
                         last_4 = raw_card[-4:] if len(raw_card) >= 4 else raw_card
-                        total_spent = round(float(row['Сумма_abs']), 2)
+                        total_spent = round(float(row["Сумма_abs"]), 2)
                         cashback = round(total_spent / 100, 2)
 
-                        cards_list.append({
-                            "last_digits": last_4,
-                            "total_spent": total_spent,
-                            "cashback": cashback
-                        })
+                        cards_list.append(
+                            {
+                                "last_digits": last_4,
+                                "total_spent": total_spent,
+                                "cashback": cashback,
+                            }
+                        )
 
             # 2. Топ-5 транзакций по абсолютному значению расхода/дохода
-            df_filtered['amount_abs'] = df_filtered['Сумма операции'].abs()
-            df_top = df_filtered.sort_values(by='amount_abs', ascending=False).head(5)
+            df_filtered["amount_abs"] = df_filtered["Сумма операции"].abs()
+            df_top = df_filtered.sort_values(by="amount_abs", ascending=False).head(5)
 
             for _, row in df_top.iterrows():
-                top_transactions.append({
-                    "date": row['Дата операции'].strftime("%d.%m.%Y"),
-                    "amount": round(float(row['Сумма операции']), 2),
-                    "category": str(row.get('Категория', 'Без категории')),
-                    "description": str(row.get('Описание', ''))
-                })
+                top_transactions.append(
+                    {
+                        "date": row["Дата операции"].strftime("%d.%m.%Y"),
+                        "amount": round(float(row["Сумма операции"]), 2),
+                        "category": str(row.get("Категория", "Без категории")),
+                        "description": str(row.get("Описание", "")),
+                    }
+                )
         except Exception as e:
             logger.error(f"Ошибка обработки Excel-файла: {e}", exc_info=True)
 
@@ -393,5 +446,5 @@ def generate_main_page_data(date_str: str) -> dict:
         "cards": cards_list,
         "top_transactions": top_transactions,
         "currency_rates": currency_rates,
-        "stock_prices": stock_prices
+        "stock_prices": stock_prices,
     }

@@ -1,12 +1,13 @@
 import logging
 import os
 from pathlib import Path
+
 import requests
 from dotenv import load_dotenv
 
-#--------------------------------------------------
-#----- 5. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 5. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 
 # Настраиваем вывод логов прямо в консоль
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -34,13 +35,10 @@ def get_currency_rates(currencies: list[str]) -> list:
 
     # 1. Проверка наличия API-ключа
     if not API_KEY:
-        logger.error(
-            "Критическая ошибка: API-ключ не найден в переменных окружения."
-        )
+        logger.error("Критическая ошибка: API-ключ не найден в переменных окружения.")
         logger.warning("Переход в резервный офлайн-режим.")
         return [
-            {"currency": cur, "rate": mock_data.get(cur, 75.0)}
-            for cur in currencies
+            {"currency": cur, "rate": mock_data.get(cur, 75.0)} for cur in currencies
         ]
 
     rates_list = []
@@ -59,9 +57,7 @@ def get_currency_rates(currencies: list[str]) -> list:
             # Запрашиваем стоимость ровно 1 единицы валюты к RUB
             params = {"to": "RUB", "from": cur, "amount": 1.0}
 
-            response = requests.get(
-                BASE_URL, headers=headers, params=params, timeout=5
-            )
+            response = requests.get(BASE_URL, headers=headers, params=params, timeout=5)
 
             if response.status_code == 200:
                 data = response.json()
@@ -69,32 +65,23 @@ def get_currency_rates(currencies: list[str]) -> list:
                 rate = round(float(data.get("result", 0.0)), 2)
 
                 rates_list.append({"currency": cur, "rate": rate})
-                logger.info(
-                    f"Успешно получен курс {cur} через API"
-                )
+                logger.info(f"Успешно получен курс {cur} через API")
             else:
                 logger.error(
                     f"Ошибка API для валюты {cur}. Статус-код: {response.status_code}. Ответ: {response.text}"
                 )
-                logger.warning(
-                    f"Для валюты {cur} используются резервные данные."
-                )
-                rates_list.append(
-                    {"currency": cur, "rate": mock_data.get(cur, 75.0)}
-                )
+                logger.warning(f"Для валюты {cur} используются резервные данные.")
+                rates_list.append({"currency": cur, "rate": mock_data.get(cur, 75.0)})
 
         logger.info("Обработка всех валют успешно завершена.")
         return rates_list
 
     except (requests.RequestException, KeyError, ValueError) as e:
-        logger.error(
-            f"Произошел сетевой или системный сбой при запросе курсов: {e}"
-        )
+        logger.error(f"Произошел сетевой или системный сбой при запросе курсов: {e}")
         logger.warning("Переход на резервные курсы для всего списка валют.")
         # В случае полного падения сети возвращаем заглушки для всего списка
         return [
-            {"currency": cur, "rate": mock_data.get(cur, 75.0)}
-            for cur in currencies
+            {"currency": cur, "rate": mock_data.get(cur, 75.0)} for cur in currencies
         ]
 
 
@@ -134,15 +121,14 @@ def get_stock_prices(currencies: list[str]) -> list:
         "AMZN": 175.0,
         "GOOGL": 150.0,
         "MSFT": 420.0,
-        "TSLA": 170.0
+        "TSLA": 170.0,
     }
 
     if not API_KEY:
         logger.error("Критическая ошибка: API-ключ не найден в переменных окружения.")
         logger.warning("Переход в резервный офлайн-режим.")
         return [
-            {"currency": cur, "rate": mock_data.get(cur, 100.0)}
-            for cur in currencies
+            {"currency": cur, "rate": mock_data.get(cur, 100.0)} for cur in currencies
         ]
 
     # Переводим список тикеров в строку через запятую для Marketstack API
@@ -152,7 +138,7 @@ def get_stock_prices(currencies: list[str]) -> list:
     params = {
         "access_key": API_KEY,
         "symbols": symbols,
-        "limit": len(currencies)  # Ограничиваем количество записей
+        "limit": len(currencies),  # Ограничиваем количество записей
     }
 
     logger.info(f"Начало сетевого запроса курсов ценных бумаг: {currencies}")
@@ -166,7 +152,9 @@ def get_stock_prices(currencies: list[str]) -> list:
 
         # Если сервер прислал пустой массив (например, из-за лимитов бесплатного тарифа)
         if not stock_data:
-            logger.warning("API вернул пустой массив. Переход на резервные курсы ценных бумаг")
+            logger.warning(
+                "API вернул пустой массив. Переход на резервные курсы ценных бумаг"
+            )
             return [
                 {"currency": cur, "rate": mock_data.get(cur, 100.0)}
                 for cur in currencies
@@ -185,12 +173,13 @@ def get_stock_prices(currencies: list[str]) -> list:
         return rates_list
 
     except (requests.RequestException, KeyError, ValueError) as e:
-        logger.error(f"Произошел сетевой или системный сбой при запросе курсов ценных бумаг: {e}")
+        logger.error(
+            f"Произошел сетевой или системный сбой при запросе курсов ценных бумаг: {e}"
+        )
         logger.warning("Переход на резервные курсы для всего списка ценных бумаг.")
         # В случае полного падения сети возвращаем заглушки для всего списка
         return [
-            {"currency": cur, "rate": mock_data.get(cur, 100.0)}
-            for cur in currencies
+            {"currency": cur, "rate": mock_data.get(cur, 100.0)} for cur in currencies
         ]
 
 
@@ -209,9 +198,9 @@ def get_stock_prices(currencies: list[str]) -> list:
 #     except Exception as e:
 #         print(f"\nПроизошла ошибка при выполнении: {e}")
 
-#--------------------------------------------------
-#----- 9. Сервисы---ОСНОВНАЯ-----------------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 9. Сервисы---ОСНОВНАЯ-----------------------
+# --------------------------------------------------
 
 import json
 import logging
@@ -276,9 +265,10 @@ def analyze_cashback_categories(data: list[dict], year: int, month: int) -> str:
     logger.info("Анализ успешно завершен.")
     return json.dumps(final_result, ensure_ascii=False, indent=4)
 
-#--------------------------------------------------
-#----- 10. Сервисы---Доп Простой поиск-------------
-#--------------------------------------------------
+
+# --------------------------------------------------
+# ----- 10. Сервисы---Доп Простой поиск-------------
+# --------------------------------------------------
 
 import json
 import logging
@@ -309,6 +299,7 @@ def simple_search(data: list[dict], search_query: str) -> str:
 
     logger.info(f"Простой поиск завершен. Найдено транзакций: {len(results)}")
     return json.dumps(results, ensure_ascii=False, indent=4)
+
 
 # ==========================================
 # ЗАПУСК функции simple_search()
@@ -341,6 +332,7 @@ def simple_search(data: list[dict], search_query: str) -> str:
 
 # --------------------------------------------------------------------------
 
+
 def search_by_phone_numbers(data: list[dict]) -> str:
     """
     Возвращает транзакции, содержащие в описании мобильные телефонные номера.
@@ -350,7 +342,7 @@ def search_by_phone_numbers(data: list[dict]) -> str:
 
     # Регулярное выражение для поиска российских мобильных номеров (начинаются на +79 или 89)
     # Учитывает возможные пробелы и дефисы между цифрами
-    phone_pattern = re.compile(r'(?:\+7|8)\s?9\d{2}\s?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
+    phone_pattern = re.compile(r"(?:\+7|8)\s?9\d{2}\s?\d{3}[\s-]?\d{2}[\s-]?\d{2}")
     results = []
 
     for tx in data:
@@ -395,4 +387,3 @@ def search_by_phone_numbers(data: list[dict]) -> str:
 #
 #     print("\n=== РЕЗУЛЬТАТ РАБОТЫ ФУНКЦИИ ===")
 #     print(json_result)
-

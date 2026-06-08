@@ -7,10 +7,11 @@ from src.utils import parse_incoming_datetime
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    parse_incoming_datetime()
 # ==========================================
-#--------------------------------------------------
+# --------------------------------------------------
 # запуск тестов
 # pytest tests/test_parse_incoming_datetime.py
-#--------------------------------------------------
+# --------------------------------------------------
+
 
 class TestParseIncomingDatetime(unittest.TestCase):
 
@@ -32,7 +33,7 @@ class TestParseIncomingDatetime(unittest.TestCase):
             "2026-06-07",
             "07-06-2026 13:05:21",
             "2026/06/07 13:05:21",
-            "not-a-date-string"
+            "not-a-date-string",
         ]
 
         for bad_input in invalid_inputs:
@@ -42,11 +43,13 @@ class TestParseIncomingDatetime(unittest.TestCase):
 
                 self.assertEqual(
                     str(context.exception),
-                    "Неверный формат. Используйте YYYY-MM-DD HH:MM:SS"
+                    "Неверный формат. Используйте YYYY-MM-DD HH:MM:SS",
                 )
 
                 # Теперь проверка сработает корректно
-                self.assertTrue(mock_logger.error.called, f"Логер не был вызван для: {bad_input}")
+                self.assertTrue(
+                    mock_logger.error.called, f"Логер не был вызван для: {bad_input}"
+                )
 
 
 if __name__ == "__main__":

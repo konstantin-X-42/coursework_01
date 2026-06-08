@@ -1,10 +1,10 @@
-#--------------------------------------------------
-#----- 4. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 4. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 
 import json
-import os
 import logging
+import os
 from datetime import datetime
 
 # Настройка локального логгера для модуля утилит
@@ -44,29 +44,38 @@ def load_user_settings(file_path: str) -> tuple[list[str], list[str]]:
     # Проверка физического наличия файла настроек
     if not os.path.exists(file_path):
         abs_path = os.path.abspath(file_path)
-        logger.warning(f"Файл настроек не найден по пути: {abs_path}. Возвращаются дефолтные параметры.")
+        logger.warning(
+            f"Файл настроек не найден по пути: {abs_path}. Возвращаются дефолтные параметры."
+        )
         return ["USD"], ["AAPL"]
 
     try:
         logger.info(f"Чтение конфигурационного файла: {file_path}")
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         currencies = data.get("user_currencies", [])
         stocks = data.get("user_stocks", [])
 
         # Лог успешного извлечения данных
-        logger.info(f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}")
+        logger.info(
+            f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}"
+        )
         return currencies, stocks
 
     except json.JSONDecodeError as e:
         # Логирование поврежденного JSON
-        logger.error(f"Критическая ошибка: Файл {file_path} содержит некорректный формат JSON: {e}")
+        logger.error(
+            f"Критическая ошибка: Файл {file_path} содержит некорректный формат JSON: {e}"
+        )
         return ["USD"], ["AAPL"]
 
     except Exception as e:
         # Логирование системных сбоев (например, проблемы с правами доступа к файлу)
-        logger.error(f"Непредвиденная ошибка при загрузке пользовательских настроек: {e}", exc_info=True)
+        logger.error(
+            f"Непредвиденная ошибка при загрузке пользовательских настроек: {e}",
+            exc_info=True,
+        )
         return ["USD"], ["AAPL"]
 
 
@@ -95,26 +104,41 @@ def load_user_settings(file_path: str) -> tuple[list[str], list[str]]:
 #     print(f"Загруженные валюты: {currencies}")
 #     print(f"Загруженные акции: {stocks}")
 
-#--------------------------------------------------
-#----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
+# --------------------------------------------------
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 # Настраиваем логирование, чтобы logger.info выводил сообщения в консоль
 logging.basicConfig(level=logging.INFO)
 
+
 def get_greeting(dt: datetime) -> str:
     """Возвращает приветствие строго по временным интервалам ТЗ."""
-    logger.info(f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}")
+    logger.info(
+        f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}"
+    )
 
     time_now = dt.time()
-    if datetime.strptime("06:00", "%H:%M").time() <= time_now <= datetime.strptime("11:59", "%H:%M").time():
+    if (
+        datetime.strptime("06:00", "%H:%M").time()
+        <= time_now
+        <= datetime.strptime("11:59", "%H:%M").time()
+    ):
         greeting = "Доброе утро"
-    elif datetime.strptime("12:00", "%H:%M").time() <= time_now <= datetime.strptime("17:59", "%H:%M").time():
+    elif (
+        datetime.strptime("12:00", "%H:%M").time()
+        <= time_now
+        <= datetime.strptime("17:59", "%H:%M").time()
+    ):
         greeting = "Добрый день"
-    elif datetime.strptime("18:00", "%H:%M").time() <= time_now <= datetime.strptime("22:59", "%H:%M").time():
+    elif (
+        datetime.strptime("18:00", "%H:%M").time()
+        <= time_now
+        <= datetime.strptime("22:59", "%H:%M").time()
+    ):
         greeting = "Добрый вечер"
     else:
         greeting = "Доброй ночи"
@@ -137,8 +161,9 @@ if __name__ == "__main__":
     print(f"Текущее время: {current_datetime.strftime('%H:%M:%S')}")
     print(f"Результат: {greeting}")
 
-from datetime import datetime
 import logging
+from datetime import datetime
+
 
 def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
     """
