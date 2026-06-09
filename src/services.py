@@ -57,7 +57,7 @@ def get_currency_rates(currencies: list[str]) -> list:
             # Запрашиваем стоимость ровно 1 единицы валюты к RUB
             params = {"to": "RUB", "from": cur, "amount": 1.0}
 
-            response = requests.get(BASE_URL, headers=headers, params=params, timeout=5)
+            response = requests.get(BASE_URL, headers=headers, params=params, timeout=5)  # type: ignore
 
             if response.status_code == 200:
                 data = response.json()
@@ -144,7 +144,7 @@ def get_stock_prices(currencies: list[str]) -> list:
     logger.info(f"Начало сетевого запроса курсов ценных бумаг: {currencies}")
 
     try:
-        response = requests.get(BASE_URL, params=params, timeout=5)
+        response = requests.get(BASE_URL, params=params, timeout=5)  # type: ignore
         response.raise_for_status()  # Вызовет ошибку при сбое сети или неверном токене
 
         data = response.json()
@@ -257,7 +257,7 @@ def analyze_cashback_categories(data: list[dict], year: int, month: int) -> str:
         return acc
 
     # Запуск сверки (reduce) с начальным пустым словарем
-    category_cashback = reduce(accumulator, filtered_transactions, {})
+    category_cashback: dict[str, int] = reduce(accumulator, filtered_transactions, {})
 
     # Фильтруем категории, где кешбэк равен 0, чтобы не засорять вывод
     final_result = {k: v for k, v in category_cashback.items() if v > 0}

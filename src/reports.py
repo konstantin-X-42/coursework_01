@@ -201,9 +201,7 @@ def spending_by_category(
         try:
             # Поддерживаем форматы дат ДД.ММ.ГГГГ или ГГГГ-ММ-ДД
             if "-" in date:
-                end_date = pd.to_datetime(
-                    date, format="%Y-%m-%d %H:%M:%S", errors="ignore"
-                )
+                end_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="ignore")  # type: ignore
                 if isinstance(end_date, str):
                     end_date = pd.to_datetime(date, format="%Y-%m-%d")
             else:
