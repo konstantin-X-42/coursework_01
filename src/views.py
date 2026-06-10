@@ -1,10 +1,8 @@
 import json
 import logging
 import os
-from datetime import datetime
 
 import pandas as pd
-
 from src.services import get_currency_rates, get_stock_prices
 from src.utils import (
     get_greeting,
@@ -127,14 +125,6 @@ def analytics_view(date_param: str) -> dict:
 # ----- 3. Веб страницы---ОСНОВНАЯ--API-------------
 # --------------------------------------------------
 
-import json
-import logging
-import os
-from datetime import datetime
-
-from src.services import get_currency_rates, get_stock_prices
-from src.utils import get_month_range, load_user_settings
-
 # Автоматически определяем директорию текущего файла, чтобы избежать NameError
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -176,7 +166,7 @@ def generate_json_response(date_str: str) -> dict:
         # Читаем ключ из этого же файла без повторного вызова os.path
         with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
             settings_data = json.load(f)
-        apilayer_key = settings_data.get("apilayer_key", "demo")
+            apilayer_key = settings_data.get("apilayer_key", "demo")
 
         logging.info(
             f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}"
@@ -219,20 +209,20 @@ def generate_json_response(date_str: str) -> dict:
 # --  --  -- ЗАПУСК ФУНКЦИИ --  generate_json_response()  --  --  --  --  --  --
 # --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --
 
-if __name__ == "__main__":
-    # Включаем вывод логов в консоль терминала
-    logging.basicConfig(level=logging.INFO)
-
-    test_date = "15.12.2021"
-    print(
-        f"\n--- Запуск проверки функции generate_json_response для даты: {test_date} ---\n"
-    )
-
-    # Вызываем функцию
-    result_data = generate_json_response(test_date)
-
-    # Печатаем итоговый JSON-словарь в терминал
-    print(json.dumps(result_data, indent=4, ensure_ascii=False))
+# if __name__ == "__main__":
+#     # Включаем вывод логов в консоль терминала
+#     logging.basicConfig(level=logging.INFO)
+#
+#     test_date = "15.12.2021"
+#     print(
+#         f"\n--- Запуск проверки функции generate_json_response для даты: {test_date} ---\n"
+#     )
+#
+#     # Вызываем функцию
+#     result_data = generate_json_response(test_date)
+#
+#     # Печатаем итоговый JSON-словарь в терминал
+#     print(json.dumps(result_data, indent=4, ensure_ascii=False))
 
 # --------------------------------------------------
 # ----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
@@ -348,14 +338,6 @@ def generate_main_page_json(date_str: str) -> dict:
 # --------------------------------------------------
 # ----- 14. main------------------------------------
 # --------------------------------------------------
-
-import logging
-import os
-
-import pandas as pd
-
-from src.services import get_currency_rates, get_stock_prices
-from src.utils import get_greeting, load_user_settings, parse_incoming_datetime
 
 logger = logging.getLogger(__name__)
 
