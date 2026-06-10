@@ -1,14 +1,14 @@
-# --------------------------------------------------
-# ----- 11. Сервисы---ОСНОВНАЯ----------------------
-# --------------------------------------------------
-
-import json
 import logging
 import os
 from datetime import datetime, timedelta
 from functools import wraps
+from typing import Optional
 
 import pandas as pd
+
+# --------------------------------------------------
+# ----- 11. Сервисы---ОСНОВНАЯ----------------------
+# --------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def save_report_to_file(filename=None):
                 logger.info(f"Декоратор сохраняет отчет в файл: {file_path}")
                 # Сохраняем результат работы функции (DataFrame) в Excel
                 df.to_excel(file_path, index=False)
-                logger.info(f"Отчет успешно сохранен.")
+                logger.info("Отчет успешно сохранен")
             except Exception as e:
                 logger.error(f"Не удалось сохранить отчет в файл: {e}")
 
@@ -172,12 +172,6 @@ def report_spending_by_category(
 # --------------------------------------------------
 # ----- 12. Сервисы---Доп Траты по категории--------
 # --------------------------------------------------
-
-import logging
-from datetime import datetime
-from typing import Optional
-
-import pandas as pd
 
 from src.reports import save_report_to_file
 
