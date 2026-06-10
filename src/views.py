@@ -3,6 +3,7 @@ import logging
 import os
 
 import pandas as pd
+
 from src.services import get_currency_rates, get_stock_prices
 from src.utils import (
     get_greeting,

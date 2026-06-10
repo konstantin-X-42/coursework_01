@@ -65,7 +65,7 @@ def save_report_to_file(filename=None):
 
 @save_report_to_file
 def report_spending_by_category(
-    df: pd.DataFrame, category: str, date_str: str = None
+    df: pd.DataFrame, category: str, date_str: str | None = None
 ) -> pd.DataFrame:
     """
     Отчет: Траты по заданной категории за последние 3 месяца от указанной даты.

@@ -1,9 +1,17 @@
+import json
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 import requests
 
-from src.services import get_currency_rates, get_stock_prices
+from src.services import (
+    analyze_cashback_categories,
+    get_currency_rates,
+    get_stock_prices,
+    search_by_phone_numbers,
+    simple_search,
+)
 
 # --------------------------------------------------
 # ----- 5. Веб страницы---ОСНОВНАЯ--API-------------
@@ -170,12 +178,6 @@ if __name__ == "__main__":
 # ----- 9. Сервисы---ОСНОВНАЯ-----------------------
 # --------------------------------------------------
 
-import json
-import unittest
-from unittest.mock import patch
-
-from src.services import analyze_cashback_categories
-
 
 class TestAnalyzeCashbackCategories(unittest.TestCase):
 
@@ -339,11 +341,6 @@ def test_analyze_cashback_categories_empty():
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    simple_search()
 # ==========================================
-import json
-import unittest
-from unittest.mock import patch
-
-from src.services import simple_search
 
 
 class TestSimpleSearch(unittest.TestCase):
@@ -413,14 +410,6 @@ if __name__ == "__main__":
 # ==========================================
 # ТЕСТЫ ДЛЯ ФУНКЦИИ    search_by_phone_numbers()
 # ==========================================
-
-import json
-
-import pytest
-
-from src.services import (
-    search_by_phone_numbers,
-)  # Поправьте путь импорта, если он отличается
 
 
 @pytest.fixture

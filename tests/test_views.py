@@ -1,9 +1,17 @@
+import json
+import unittest
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from src.views import analytics_view
+from src.views import (
+    analytics_view,
+    generate_json_response,
+    generate_main_page_data,
+    generate_main_page_json,
+)
 
 # --------------------------------------------------
 # ----- 1. Веб страницы---ОСНОВНАЯ------------------
@@ -90,15 +98,6 @@ def test_analytics_view_file_not_found(monkeypatch):
 # --------------------------------------------------
 # ----- 3. Веб страницы---ОСНОВНАЯ--API-------------
 # --------------------------------------------------
-
-import json
-from datetime import datetime
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-# Замените 'src.views' на ваш реальный путь импорта, если он отличается
-from src.views import generate_json_response
 
 
 @pytest.fixture
@@ -212,15 +211,6 @@ def test_generate_json_response_api_failure_fallback(mock_dependencies):
 # --------------------------------------------------
 # ----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
 # --------------------------------------------------
-
-import unittest
-from datetime import datetime
-from unittest.mock import Mock, patch
-
-import pandas as pd
-
-# Импортируем функцию из вашего модуля (укажите правильный путь импорта)
-from src.views import generate_main_page_json
 
 
 class TestGenerateMainPageJson(unittest.TestCase):
@@ -346,14 +336,6 @@ if __name__ == "__main__":
 # --------------------------------------------------
 # ----- 14. main------------------------------------
 # --------------------------------------------------
-
-from datetime import datetime
-from unittest.mock import MagicMock, patch
-
-import pandas as pd
-import pytest
-
-from src.views import generate_main_page_data
 
 
 @pytest.fixture

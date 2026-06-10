@@ -1,16 +1,18 @@
+import pandas as pd
+import pytest
+
+from src.reports import (
+    report_spending_by_category,
+    save_report_to_file,
+    spending_by_category,
+)
+
 # --------------------------------------------------
 # ----- 11. Сервисы---ОСНОВНАЯ----------------------
 # --------------------------------------------------
 # запуск тестов
 # pytest tests/test_reports.py
 # --------------------------------------------------
-import os
-from datetime import datetime
-
-import pandas as pd
-import pytest
-
-from src.reports import report_spending_by_category, save_report_to_file
 
 
 @pytest.fixture
@@ -57,11 +59,6 @@ def test_decorator_saves_file(sample_dataframe, tmp_path, monkeypatch):
 # --------------------------------------------------
 # ----- 12. Сервисы---Доп Траты по категории--------
 # --------------------------------------------------
-
-import pandas as pd
-import pytest
-
-from src.reports import spending_by_category
 
 
 def test_spending_by_category_three_months():
