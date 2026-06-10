@@ -113,35 +113,58 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_greeting(dt: datetime) -> str:
-    """Возвращает приветствие строго по временным интервалам ТЗ."""
+    """Возвращает приветствие строго по времени компьютера, игнорируя внешние аргументы"""
+    dt = datetime.now()  # ПРИНУДИТЕЛЬНО ПЕРЕЗАПИСЫВАЕМ НА ТЕКУЩЕЕ ВРЕМЯ НА ПК
     logger.info(
         f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}"
     )
 
-    time_now = dt.time()
-    if (
-        datetime.strptime("06:00", "%H:%M").time()
-        <= time_now
-        <= datetime.strptime("11:59", "%H:%M").time()
-    ):
+    # Достаем только час как целое число
+    hour = dt.hour
+
+    if 6 <= hour < 12:
         greeting = "Доброе утро"
-    elif (
-        datetime.strptime("12:00", "%H:%M").time()
-        <= time_now
-        <= datetime.strptime("17:59", "%H:%M").time()
-    ):
+    elif 12 <= hour < 18:
         greeting = "Добрый день"
-    elif (
-        datetime.strptime("18:00", "%H:%M").time()
-        <= time_now
-        <= datetime.strptime("22:59", "%H:%M").time()
-    ):
+    elif 18 <= hour < 23:
         greeting = "Добрый вечер"
     else:
         greeting = "Доброй ночи"
 
     logger.info(f"Успешно определено приветствие: '{greeting}'")
     return greeting
+
+
+# def get_greeting(dt: datetime) -> str:
+#     """Возвращает приветствие строго по временным интервалам ТЗ."""
+#     logger.info(
+#         f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}"
+#     )
+#
+#     time_now = dt.time()
+#     if (
+#         datetime.strptime("06:00", "%H:%M").time()
+#         <= time_now
+#         <= datetime.strptime("11:59", "%H:%M").time()
+#     ):
+#         greeting = "Доброе утро"
+#     elif (
+#         datetime.strptime("12:00", "%H:%M").time()
+#         <= time_now
+#         <= datetime.strptime("17:59", "%H:%M").time()
+#     ):
+#         greeting = "Добрый день"
+#     elif (
+#         datetime.strptime("18:00", "%H:%M").time()
+#         <= time_now
+#         <= datetime.strptime("22:59", "%H:%M").time()
+#     ):
+#         greeting = "Добрый вечер"
+#     else:
+#         greeting = "Доброй ночи"
+#
+#     logger.info(f"Успешно определено приветствие: '{greeting}'")
+#     return greeting
 
 
 # ==========================================================
