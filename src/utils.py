@@ -134,39 +134,6 @@ def get_greeting(dt: datetime) -> str:
     logger.info(f"Успешно определено приветствие: '{greeting}'")
     return greeting
 
-
-# def get_greeting(dt: datetime) -> str:
-#     """Возвращает приветствие строго по временным интервалам ТЗ."""
-#     logger.info(
-#         f"Начало определения приветствия для времени: {dt.strftime('%H:%M:%S')}"
-#     )
-#
-#     time_now = dt.time()
-#     if (
-#         datetime.strptime("06:00", "%H:%M").time()
-#         <= time_now
-#         <= datetime.strptime("11:59", "%H:%M").time()
-#     ):
-#         greeting = "Доброе утро"
-#     elif (
-#         datetime.strptime("12:00", "%H:%M").time()
-#         <= time_now
-#         <= datetime.strptime("17:59", "%H:%M").time()
-#     ):
-#         greeting = "Добрый день"
-#     elif (
-#         datetime.strptime("18:00", "%H:%M").time()
-#         <= time_now
-#         <= datetime.strptime("22:59", "%H:%M").time()
-#     ):
-#         greeting = "Добрый вечер"
-#     else:
-#         greeting = "Доброй ночи"
-#
-#     logger.info(f"Успешно определено приветствие: '{greeting}'")
-#     return greeting
-
-
 # ==========================================================
 # ЗАПУСК функции get_greeting()
 # ==========================================================

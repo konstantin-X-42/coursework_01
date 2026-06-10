@@ -162,9 +162,6 @@ def main():
             print(f"Используется текущее время: {date_input}")
 
         result = generate_main_page_data(date_input)
-        # date_input = input("Введите дату и время (YYYY-MM-DD HH:MM:SS): ").strip()
-        # # Пример: 2021-12-21 13:00:00
-        # result = generate_main_page_data(date_input)
         print("\nРезультат (JSON):")
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
