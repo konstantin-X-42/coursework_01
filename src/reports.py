@@ -173,8 +173,6 @@ def report_spending_by_category(
 # ----- 12. Сервисы---Доп Траты по категории--------
 # --------------------------------------------------
 
-from src.reports import save_report_to_file
-
 
 @save_report_to_file
 def spending_by_category(
