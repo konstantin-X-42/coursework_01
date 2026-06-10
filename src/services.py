@@ -1,5 +1,9 @@
+import json
 import logging
 import os
+import re
+from datetime import datetime
+from functools import reduce
 from pathlib import Path
 
 import requests
@@ -202,11 +206,6 @@ def get_stock_prices(currencies: list[str]) -> list:
 # ----- 9. Сервисы---ОСНОВНАЯ-----------------------
 # --------------------------------------------------
 
-import json
-import logging
-from datetime import datetime
-from functools import reduce
-
 logger = logging.getLogger(__name__)
 
 
@@ -269,10 +268,6 @@ def analyze_cashback_categories(data: list[dict], year: int, month: int) -> str:
 # --------------------------------------------------
 # ----- 10. Сервисы---Доп Простой поиск-------------
 # --------------------------------------------------
-
-import json
-import logging
-import re
 
 
 def simple_search(data: list[dict], search_query: str) -> str:
@@ -361,8 +356,7 @@ def search_by_phone_numbers(data: list[dict]) -> str:
 # ==========================================
 
 # if __name__ == "__main__":
-#     import logging
-#
+
 #     # 1. Настраиваем вывод логов в консоль
 #     logging.basicConfig(
 #         level=logging.INFO,
