@@ -1,11 +1,11 @@
-# --------------------------------------------------
-# ----- 4. Веб страницы---ОСНОВНАЯ--API-------------
-# --------------------------------------------------
-
 import json
 import logging
 import os
 from datetime import datetime
+
+# --------------------------------------------------
+# ----- 4. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 
 # Настройка локального логгера для модуля утилит
 logger = logging.getLogger(__name__)
@@ -108,9 +108,6 @@ def load_user_settings(file_path: str) -> tuple[list[str], list[str]]:
 # ----- 6. Веб страницы---доп.ГЛАВНАЯ---------------
 # --------------------------------------------------
 
-import logging
-from datetime import datetime
-
 # Настраиваем логирование, чтобы logger.info выводил сообщения в консоль
 logging.basicConfig(level=logging.INFO)
 
@@ -150,19 +147,16 @@ def get_greeting(dt: datetime) -> str:
 # ==========================================================
 # ЗАПУСК функции get_greeting()
 # ==========================================================
-if __name__ == "__main__":
-    # 1. Получаем текущую дату и время на компьютере
-    current_datetime = datetime.now()
-
-    # 2. Передаем её в функцию и получаем приветствие
-    greeting = get_greeting(current_datetime)
-
-    # 3. Выводим результат в консоль
-    print(f"Текущее время: {current_datetime.strftime('%H:%M:%S')}")
-    print(f"Результат: {greeting}")
-
-import logging
-from datetime import datetime
+# if __name__ == "__main__":
+#     # 1. Получаем текущую дату и время на компьютере
+#     current_datetime = datetime.now()
+#
+#     # 2. Передаем её в функцию и получаем приветствие
+#     greeting = get_greeting(current_datetime)
+#
+#     # 3. Выводим результат в консоль
+#     print(f"Текущее время: {current_datetime.strftime('%H:%M:%S')}")
+#     print(f"Результат: {greeting}")
 
 
 def parse_incoming_datetime(date_str: str) -> tuple[datetime, datetime]:
