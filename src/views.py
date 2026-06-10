@@ -159,15 +159,10 @@ def generate_json_response(date_str: str) -> dict:
         logging.error(f"Файл настроек не найден по пути: {SETTINGS_FILE}")
         return {"error": f"Файл настроек не найден по пути: {SETTINGS_FILE}"}
 
-    # 3. Загрузка настроек и API-ключа (все операции с файлом в одном блоке)
+    # 3. Загрузка настроек (все операции с файлом в одном блоке)
     try:
-        # Извлекаем основные настройки через вашу утилиту
+        # Извлекаем основные настройки через утилиту
         currencies, stocks = load_user_settings(SETTINGS_FILE)
-
-        # Читаем ключ из этого же файла без повторного вызова os.path
-        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-            settings_data = json.load(f)
-            apilayer_key = settings_data.get("apilayer_key", "demo")
 
         logging.info(
             f"Настройки успешно загружены. Валюты: {currencies}, Акции: {stocks}"

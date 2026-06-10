@@ -92,15 +92,15 @@ def get_currency_rates(currencies: list[str]) -> list:
 # ==========================================
 # ЗАПУСК функции get_currency_rates()
 # ==========================================
-if __name__ == "__main__":
-
-    # Передаем список валют, как в проекте
-    test_currencies = ["USD", "EUR", "GBP"]
-
-    result = get_currency_rates(test_currencies)
-
-    print("\n--  -- Результат выполнения функции get_currency_rates() --  --")
-    print(result)
+# if __name__ == "__main__":
+#
+#     # Передаем список валют, как в проекте
+#     test_currencies = ["USD", "EUR", "GBP"]
+#
+#     result = get_currency_rates(test_currencies)
+#
+#     print("\n--  -- Результат выполнения функции get_currency_rates() --  --")
+#     print(result)
 
 
 # --------------------------------------------------------------------

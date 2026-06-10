@@ -188,7 +188,8 @@ def test_generate_json_response_settings_file_missing(mock_dependencies):
 
 def test_generate_json_response_corrupted_json(mock_dependencies):
     """Тест сценария, когда файл настроек поврежден (ошибка JSONDecodeError)."""
-    mock_dependencies["json_load"].side_effect = json.JSONDecodeError(
+    # Ломаем утилиту загрузки настроек load_user_settings
+    mock_dependencies["load_settings"].side_effect = json.JSONDecodeError(
         "Expecting value", "", 0
     )
 
