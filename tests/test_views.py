@@ -1,47 +1,62 @@
-import pytest
-import pandas as pd
+import json
+import unittest
 from datetime import datetime
-from src.views import analytics_view
+from unittest.mock import MagicMock, patch
 
-#--------------------------------------------------
-#----- 1. Веб страницы---ОСНОВНАЯ------------------
-#--------------------------------------------------
+import pandas as pd
+import pytest
+
+from src.views import (
+    analytics_view,
+    generate_json_response,
+    generate_main_page_data,
+    generate_main_page_json,
+)
+
+# --------------------------------------------------
+# ----- 1. Веб страницы---ОСНОВНАЯ------------------
+# --------------------------------------------------
 # запуск тестов analytics_view()
 # pytest tests/test_views.py
-#--------------------------------------------------
+# --------------------------------------------------
+
 
 # Создаем тестовый набор данных, имитирующий Excel-файл
 @pytest.fixture
 def mock_excel_data():
-    return pd.DataFrame([
-        {
-            "Дата операции": "15.12.2021 18:44:47",
-            "Статус": "OK",
-            "Сумма операции": -118.0,
-            "Категория": "Фастфуд",
-            "Кэшбэк": None
-        },
-        {
-            "Дата операции": "20.12.2021 12:00:00",
-            "Статус": "OK",
-            "Сумма операции": -500.0,
-            "Категория": "Транспорт",
-            "Кэшбэк": 10.0
-        },
-        {
-            "Дата операции": "05.01.2022 10:00:00",
-            "Статус": "OK",
-            "Сумма операции": -300.0,
-            "Категория": "Супермаркеты",
-            "Кэшбэк": None
-        }
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "Дата операции": "15.12.2021 18:44:47",
+                "Статус": "OK",
+                "Сумма операции": -118.0,
+                "Категория": "Фастфуд",
+                "Кэшбэк": None,
+            },
+            {
+                "Дата операции": "20.12.2021 12:00:00",
+                "Статус": "OK",
+                "Сумма операции": -500.0,
+                "Категория": "Транспорт",
+                "Кэшбэк": 10.0,
+            },
+            {
+                "Дата операции": "05.01.2022 10:00:00",
+                "Статус": "OK",
+                "Сумма операции": -300.0,
+                "Категория": "Супермаркеты",
+                "Кэшбэк": None,
+            },
+        ]
+    )
 
 
 def test_analytics_view_success(monkeypatch, mock_excel_data):
     """Тест успешной фильтрации данных за указанный месяц"""
     # Подменяем функцию read_excel, чтобы она возвращала тестовый DataFrame
-    monkeypatch.setattr(pd, "read_excel", lambda *args, **kwargs: mock_excel_data.copy())
+    monkeypatch.setattr(
+        pd, "read_excel", lambda *args, **kwargs: mock_excel_data.copy()
+    )
     # Имитируем, что файл всегда физически существует для прохождения проверки os.path.exists
     monkeypatch.setattr("os.path.exists", lambda path: True)
 
@@ -79,29 +94,28 @@ def test_analytics_view_file_not_found(monkeypatch):
     assert "error" in result
     assert "Файл не найден" in result["error"]
 
-#--------------------------------------------------
-#----- 3. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
 
-import json
-from datetime import datetime
-from unittest.mock import MagicMock, patch
-import pytest
-
-# Замените 'src.views' на ваш реальный путь импорта, если он отличается
-from src.views import generate_json_response
+# --------------------------------------------------
+# ----- 3. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 
 
 @pytest.fixture
 def mock_dependencies():
     """Фикстура для изоляции внешних функций, путей и файлов функции generate_json_response."""
-    with patch("src.views.get_month_range") as mock_range, \
-         patch("src.views.os.path.exists") as mock_exists, \
-         patch("src.views.load_user_settings") as mock_load_settings, \
-         patch("src.views.open", create=True) as mock_open, \
-         patch("src.views.get_currency_rates") as mock_currency, \
-         patch("src.views.get_stock_prices") as mock_stock, \
-         patch("src.views.logging"):  # Отключаем логирование, чтобы не спамить в консоль
+    with patch("src.views.get_month_range") as mock_range, patch(
+        "src.views.os.path.exists"
+    ) as mock_exists, patch(
+        "src.views.load_user_settings"
+    ) as mock_load_settings, patch(
+        "src.views.open", create=True
+    ) as mock_open, patch(
+        "src.views.get_currency_rates"
+    ) as mock_currency, patch(
+        "src.views.get_stock_prices"
+    ) as mock_stock, patch(
+        "src.views.logging"
+    ):  # Отключаем логирование, чтобы не спамить в консоль
 
         # Задаем дефолтные значения для успешного прохождения сценариев
         mock_range.return_value = (datetime(2023, 10, 1), datetime(2023, 10, 31))
@@ -118,7 +132,7 @@ def mock_dependencies():
             mock_json_load.return_value = {
                 "currencies": ["USD", "EUR"],
                 "stocks": ["AAPL", "GOOGL"],
-                "apilayer_key": "test_api_key"
+                "apilayer_key": "test_api_key",
             }
 
             yield {
@@ -127,7 +141,7 @@ def mock_dependencies():
                 "load_settings": mock_load_settings,
                 "currency": mock_currency,
                 "stock": mock_stock,
-                "json_load": mock_json_load
+                "json_load": mock_json_load,
             }
 
 
@@ -174,7 +188,10 @@ def test_generate_json_response_settings_file_missing(mock_dependencies):
 
 def test_generate_json_response_corrupted_json(mock_dependencies):
     """Тест сценария, когда файл настроек поврежден (ошибка JSONDecodeError)."""
-    mock_dependencies["json_load"].side_effect = json.JSONDecodeError("Expecting value", "", 0)
+    # Ломаем утилиту загрузки настроек load_user_settings
+    mock_dependencies["load_settings"].side_effect = json.JSONDecodeError(
+        "Expecting value", "", 0
+    )
 
     response = generate_json_response("10.2023")
     assert response == {"error": "Файл настроек поврежден (неверный JSON)"}
@@ -191,17 +208,10 @@ def test_generate_json_response_api_failure_fallback(mock_dependencies):
     assert response["currencies_exchange_rub"] == []
     assert response["stock_prices_usd"] == []
 
-#--------------------------------------------------
-#----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
-#--------------------------------------------------
 
-import unittest
-from datetime import datetime
-from unittest.mock import patch, Mock
-import pandas as pd
-
-# Импортируем функцию из вашего модуля (укажите правильный путь импорта)
-from src.views import generate_main_page_json
+# --------------------------------------------------
+# ----- 8. Веб страницы---доп.ГЛАВНАЯ---------------
+# --------------------------------------------------
 
 
 class TestGenerateMainPageJson(unittest.TestCase):
@@ -210,18 +220,24 @@ class TestGenerateMainPageJson(unittest.TestCase):
     def test_invalid_date_format(self, mock_parse):
         """Тест поведения функции при неверном формате даты (ValueError)."""
         # Настраиваем вызов исключения при парсинге
-        mock_parse.side_effect = ValueError("Неверный формат. Используйте YYYY-MM-DD HH:MM:SS")
+        mock_parse.side_effect = ValueError(
+            "Неверный формат. Используйте YYYY-MM-DD HH:MM:SS"
+        )
 
         result = generate_main_page_json("invalid-date")
 
         # Ожидаем возврат словаря с ошибкой без выполнения остальной логики
-        self.assertEqual(result, {"error": "Неверный формат. Используйте YYYY-MM-DD HH:MM:SS"})
+        self.assertEqual(
+            result, {"error": "Неверный формат. Используйте YYYY-MM-DD HH:MM:SS"}
+        )
 
     @patch("src.views.os.path.exists")
     @patch("src.views.load_user_settings")
     @patch("src.views.get_currency_rates")
     @patch("src.views.get_stock_prices")
-    def test_excel_file_not_found(self, mock_stocks, mock_currencies, mock_load_settings, mock_exists):
+    def test_excel_file_not_found(
+        self, mock_stocks, mock_currencies, mock_load_settings, mock_exists
+    ):
         """Тест работы функции, когда Excel файл с транзакциями отсутствует на диске."""
         mock_exists.return_value = False
         mock_load_settings.return_value = (["USD"], ["AAPL"])
@@ -241,8 +257,14 @@ class TestGenerateMainPageJson(unittest.TestCase):
     @patch("src.views.load_user_settings")
     @patch("src.views.get_currency_rates")
     @patch("src.views.get_stock_prices")
-    def test_successful_generation(self, mock_stocks, mock_currencies, mock_load_settings, mock_read_excel,
-                                   mock_exists):
+    def test_successful_generation(
+        self,
+        mock_stocks,
+        mock_currencies,
+        mock_load_settings,
+        mock_read_excel,
+        mock_exists,
+    ):
         """Интеграционный тест успешной сборки JSON со всеми агрегациями Pandas и API."""
         mock_exists.return_value = True
         mock_load_settings.return_value = ([], [])
@@ -250,13 +272,19 @@ class TestGenerateMainPageJson(unittest.TestCase):
         mock_stocks.return_value = []
 
         # Создаем тестовый DataFrame, имитирующий содержимое Excel
-        mock_df = pd.DataFrame({
-            "Дата операции": ["01.06.2026", "02.06.2026", "05.06.2026"],
-            "Сумма платежа": [-10000.0, -5000.0, 15000.0],  # Два расхода, одно поступление
-            "Номер карты": ["*4444", "*4444", "*1111"],
-            "Категория": ["Супермаркеты", "Фастфуд", "Зарплата"],
-            "Описание": ["Пятерочка", "Бургер Кинг", "Перевод"]
-        })
+        mock_df = pd.DataFrame(
+            {
+                "Дата операции": ["01.06.2026", "02.06.2026", "05.06.2026"],
+                "Сумма платежа": [
+                    -10000.0,
+                    -5000.0,
+                    15000.0,
+                ],  # Два расхода, одно поступление
+                "Номер карты": ["*4444", "*4444", "*1111"],
+                "Категория": ["Супермаркеты", "Фастфуд", "Зарплата"],
+                "Описание": ["Пятерочка", "Бургер Кинг", "Перевод"],
+            }
+        )
         mock_read_excel.return_value = mock_df
 
         # Запускаем генерацию для 7 июня (данные от 1, 2 и 5 июня попадают в маску)
@@ -279,8 +307,14 @@ class TestGenerateMainPageJson(unittest.TestCase):
     @patch("src.views.load_user_settings")
     @patch("src.views.get_currency_rates")
     @patch("src.views.get_stock_prices")
-    def test_excel_processing_exception(self, mock_stocks, mock_currencies, mock_load_settings, mock_read_excel,
-                                        mock_exists):
+    def test_excel_processing_exception(
+        self,
+        mock_stocks,
+        mock_currencies,
+        mock_load_settings,
+        mock_read_excel,
+        mock_exists,
+    ):
         """Тест устойчивости функции к критическим сбоям при обработке Excel (блок try-except)."""
         mock_exists.return_value = True
         # Имитируем поломку парсера или повреждение структуры Excel-файла
@@ -300,27 +334,25 @@ class TestGenerateMainPageJson(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
-#--------------------------------------------------
-#----- 14. main------------------------------------
-#--------------------------------------------------
-
-from datetime import datetime
-from unittest.mock import patch, MagicMock
-import pandas as pd
-import pytest
-from src.views import generate_main_page_data
+# --------------------------------------------------
+# ----- 14. main------------------------------------
+# --------------------------------------------------
 
 
 @pytest.fixture
 def mock_main_dependencies():
     """Фикстура для изоляции внешних вызовов функции generate_main_page_data."""
-    with patch("src.views.parse_incoming_datetime") as mock_parse, \
-         patch("src.views.get_greeting") as mock_greet, \
-         patch("src.views.os.path.exists") as mock_exists, \
-         patch("src.views.pd.read_excel") as mock_read_excel, \
-         patch("src.views.load_user_settings") as mock_load_settings, \
-         patch("src.views.get_currency_rates") as mock_currency, \
-         patch("src.views.get_stock_prices") as mock_stock:
+    with patch("src.views.parse_incoming_datetime") as mock_parse, patch(
+        "src.views.get_greeting"
+    ) as mock_greet, patch("src.views.os.path.exists") as mock_exists, patch(
+        "src.views.pd.read_excel"
+    ) as mock_read_excel, patch(
+        "src.views.load_user_settings"
+    ) as mock_load_settings, patch(
+        "src.views.get_currency_rates"
+    ) as mock_currency, patch(
+        "src.views.get_stock_prices"
+    ) as mock_stock:
 
         # Настройки по умолчанию
         mock_parse.return_value = (datetime(2026, 6, 1), datetime(2026, 6, 7))
@@ -337,7 +369,7 @@ def mock_main_dependencies():
             "read_excel": mock_read_excel,
             "load_settings": mock_load_settings,
             "currency": mock_currency,
-            "stock": mock_stock
+            "stock": mock_stock,
         }
 
 
@@ -351,7 +383,7 @@ def test_generate_main_page_data_success(mock_main_dependencies):
         "Сумма платежа": [-5000.0, -1500.0, -2000.0],
         "Сумма операции": [-5000.0, -1500.0, -2000.0],
         "Категория": ["Супермаркеты", "Одежда", "Фастфуд"],
-        "Описание": ["Покупка еды", "Покупка куртки", "Мимо кассы"]
+        "Описание": ["Покупка еды", "Покупка куртки", "Мимо кассы"],
     }
     mock_main_dependencies["read_excel"].return_value = pd.DataFrame(fake_excel_data)
 
@@ -366,7 +398,7 @@ def test_generate_main_page_data_success(mock_main_dependencies):
     assert len(response["cards"]) == 1
     assert response["cards"][0]["last_digits"] == "4444"
     assert response["cards"][0]["total_spent"] == 6500.0  # 5000 + 1500
-    assert response["cards"][0]["cashback"] == 65.0       # 6500 / 100
+    assert response["cards"][0]["cashback"] == 65.0  # 6500 / 100
 
     # Проверяем ТОП транзакции (в июне их всего 2 штуки)
     assert len(response["top_transactions"]) == 2

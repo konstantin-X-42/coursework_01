@@ -1,12 +1,12 @@
-#--------------------------------------------------
-#----- 2. Веб страницы---ОСНОВНАЯ------------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 2. Веб страницы---ОСНОВНАЯ------------------
+# --------------------------------------------------
 # запусков тестов во всех модулях с покрытием кода
 # poetry run pytest --cov=src tests/
 
 # запуск программы
 # poetry run python -m src.main
-#--------------------------------------------------
+# --------------------------------------------------
 
 # установка библиотеки uvicorn - выполняет роль веб-сервера
 # poetry add uvicorn
@@ -37,9 +37,9 @@
 #         raise HTTPException(status_code=400, detail=result["error"])
 #
 #     return result
-#--------------------------------------------------
-#----- 3. Веб страницы---ОСНОВНАЯ--API-------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 3. Веб страницы---ОСНОВНАЯ--API-------------
+# --------------------------------------------------
 # from src.views import generate_json_response
 #
 #
@@ -92,28 +92,34 @@
 #     }
 
 
-#--------------------------------------------------
-#----- 15. main------------------------------------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 15. main------------------------------------
+# --------------------------------------------------
 
-import sys
 import json
 import logging
 import os
+import sys
+
 import pandas as pd
-from src.views import generate_main_page_data
-from src.services import simple_search, search_by_phone_numbers, analyze_cashback_categories
+
 from src.reports import spending_by_category
+from src.services import (
+    analyze_cashback_categories,
+    search_by_phone_numbers,
+    simple_search,
+)
+from src.views import generate_main_page_data
 
 # Настройка логирования в файл проекта и консоль
-log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'project.log')
+log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "project.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
+        logging.FileHandler(log_file, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
 )
 logger = logging.getLogger("main_application")
 
@@ -130,40 +136,47 @@ def main():
     choice = input("\nВыберите действие (1-5): ").strip()
 
     CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    if os.path.basename(CURRENT_DIR) == 'src':
+    if os.path.basename(CURRENT_DIR) == "src":
         BASE_DIR = os.path.dirname(CURRENT_DIR)
     else:
         BASE_DIR = CURRENT_DIR
 
-    excel_path = os.path.join(BASE_DIR, 'data', 'operations.xlsx')
+    excel_path = os.path.join(BASE_DIR, "data", "operations.xlsx")
     # Загружаем сырые данные из Excel в список словарей, если файл существует
     raw_data = []
     if os.path.exists(excel_path):
         df = pd.read_excel(excel_path)
         # Приводим даты к строке для корректной передачи в сервисы
-        if 'Дата операции' in df.columns:
-            df['Дата операции'] = df['Дата операции'].astype(str)
-        raw_data = df.to_dict(orient='records')
+        if "Дата операции" in df.columns:
+            df["Дата операции"] = df["Дата операции"].astype(str)
+        raw_data = df.to_dict(orient="records")
 
-    if choice == '1':
+    if choice == "1":
         date_input = input("Введите дату и время (YYYY-MM-DD HH:MM:SS): ").strip()
-        # Пример: 2021-12-21 13:00:00
+
+        # Если пользователь ничего не ввёл, берём текущее время компьютера
+        if not date_input:
+            from datetime import datetime
+
+            date_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"Используется текущее время: {date_input}")
+
         result = generate_main_page_data(date_input)
         print("\nРезультат (JSON):")
         print(json.dumps(result, ensure_ascii=False, indent=2))
 
-    elif choice == '2':
+    elif choice == "2":
         query = input("Введите строку для поиска (Категория/Описание): ").strip()
         result_json = simple_search(raw_data, query)
         print("\nНайденные транзакции:")
         print(result_json)
 
-    elif choice == '3':
+    elif choice == "3":
         result_json = search_by_phone_numbers(raw_data)
         print("\nТранзакции с телефонными номерами:")
         print(result_json)
 
-    elif choice == '4':
+    elif choice == "4":
         try:
             year = int(input("Введите год (например, 2021): ").strip())
             month = int(input("Введите месяц (1-12): ").strip())
@@ -173,13 +186,15 @@ def main():
         except ValueError:
             print("Ошибка: год и месяц должны быть числами.")
 
-    elif choice == '5':
+    elif choice == "5":
         if not os.path.exists(excel_path):
             print("Файл базы данных не найден.")
             return
         df_all = pd.read_excel(excel_path)
         category = input("Введите категорию (например, Супермаркеты): ").strip()
-        date_opt = input("Введите дату (ДД.ММ.ГГГГ) или нажмите Enter для текущей: ").strip()
+        date_opt = input(
+            "Введите дату (ДД.ММ.ГГГГ) или нажмите Enter для текущей: "
+        ).strip()
         date_param = date_opt if date_opt else None
 
         # Запуск функции-отчета (декоратор автоматически сохранит файл в data/reports/)
@@ -192,5 +207,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

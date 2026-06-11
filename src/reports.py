@@ -1,20 +1,22 @@
-#--------------------------------------------------
-#----- 11. Сервисы---ОСНОВНАЯ----------------------
-#--------------------------------------------------
-
-import os
-import json
 import logging
+import os
 from datetime import datetime, timedelta
 from functools import wraps
+from typing import Optional
+
 import pandas as pd
+
+# --------------------------------------------------
+# ----- 11. Сервисы---ОСНОВНАЯ----------------------
+# --------------------------------------------------
 
 logger = logging.getLogger(__name__)
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CURRENT_DIR)
-REPORTS_DIR = os.path.join(BASE_DIR, 'data', 'reports')
+REPORTS_DIR = os.path.join(BASE_DIR, "data", "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
+
 
 def save_report_to_file(filename=None):
     """
@@ -43,7 +45,7 @@ def save_report_to_file(filename=None):
                 logger.info(f"Декоратор сохраняет отчет в файл: {file_path}")
                 # Сохраняем результат работы функции (DataFrame) в Excel
                 df.to_excel(file_path, index=False)
-                logger.info(f"Отчет успешно сохранен.")
+                logger.info("Отчет успешно сохранен")
             except Exception as e:
                 logger.error(f"Не удалось сохранить отчет в файл: {e}")
 
@@ -62,7 +64,9 @@ def save_report_to_file(filename=None):
 
 
 @save_report_to_file
-def report_spending_by_category(df: pd.DataFrame, category: str, date_str: str = None) -> pd.DataFrame:
+def report_spending_by_category(
+    df: pd.DataFrame, category: str, date_str: str | None = None
+) -> pd.DataFrame:
     """
     Отчет: Траты по заданной категории за последние 3 месяца от указанной даты.
     Если date_str не указана, берется текущая дата.
@@ -84,19 +88,20 @@ def report_spending_by_category(df: pd.DataFrame, category: str, date_str: str =
 
     # Копируем и приводим колонку с датами к типу datetime
     df_temp = df.copy()
-    df_temp['Дата операции'] = pd.to_datetime(df_temp['Дата операции'], dayfirst=True)
+    df_temp["Дата операции"] = pd.to_datetime(df_temp["Дата операции"], dayfirst=True)
 
     # Фильтруем по дате, категории и оставляем только расходы (Сумма платежа < 0)
     mask = (
-            (df_temp['Дата операции'] >= start_date) &
-            (df_temp['Дата операции'] <= end_date) &
-            (df_temp['Категория'].str.lower() == category.lower()) &
-            (df_temp['Сумма платежа'] < 0)
+        (df_temp["Дата операции"] >= start_date)
+        & (df_temp["Дата операции"] <= end_date)
+        & (df_temp["Категория"].str.lower() == category.lower())
+        & (df_temp["Сумма платежа"] < 0)
     )
 
     result_df = df_temp[mask]
     logger.info(f"Отчет сформирован. Найдено строк: {len(result_df)}")
     return result_df
+
 
 # ==================================================
 # ЗАПУСК функции-декоратор   save_report_to_file()
@@ -164,20 +169,15 @@ def report_spending_by_category(df: pd.DataFrame, category: str, date_str: str =
 #
 #     print("\n=== ПРОВЕРКА ДЕКОРАТОРА ЗАВЕРШЕНА ===")
 
-#--------------------------------------------------
-#----- 12. Сервисы---Доп Траты по категории--------
-#--------------------------------------------------
+# --------------------------------------------------
+# ----- 12. Сервисы---Доп Траты по категории--------
+# --------------------------------------------------
 
-import logging
-from typing import Optional
-from datetime import datetime
-import pandas as pd
-from src.reports import save_report_to_file
 
 @save_report_to_file
-def spending_by_category(transactions: pd.DataFrame,
-                         category: str,
-                         date: Optional[str] = None) -> pd.DataFrame:
+def spending_by_category(
+    transactions: pd.DataFrame, category: str, date: Optional[str] = None
+) -> pd.DataFrame:
     """
     Возвращает траты по заданной категории за последние три месяца от переданной даты.
     Если дата не передана, то берется текущая дата.
@@ -193,33 +193,43 @@ def spending_by_category(transactions: pd.DataFrame,
         try:
             # Поддерживаем форматы дат ДД.ММ.ГГГГ или ГГГГ-ММ-ДД
             if "-" in date:
-                end_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors='ignore')
+                end_date = pd.to_datetime(date, format="%Y-%m-%d %H:%M:%S", errors="ignore")  # type: ignore
                 if isinstance(end_date, str):
                     end_date = pd.to_datetime(date, format="%Y-%m-%d")
             else:
                 end_date = pd.to_datetime(date, dayfirst=True)
-            logger.info(f"Используется переданная дата для анализа: {end_date.strftime('%Y-%m-%d')}")
+            logger.info(
+                f"Используется переданная дата для анализа: {end_date.strftime('%Y-%m-%d')}"
+            )
         except Exception as e:
-            logger.error(f"Ошибка парсинга переданной даты '{date}': {e}. Берем текущую дату.")
+            logger.error(
+                f"Ошибка парсинга переданной даты '{date}': {e}. Берем текущую дату."
+            )
             end_date = pd.Timestamp.now()
     else:
         end_date = pd.Timestamp.now()
-        logger.info(f"Дата не передана. Используется текущая дата: {end_date.strftime('%Y-%m-%d')}")
+        logger.info(
+            f"Дата не передана. Используется текущая дата: {end_date.strftime('%Y-%m-%d')}"
+        )
 
     # 2. Точный расчет даты 3 месяца назад с помощью DateOffset (учитывает разное количество дней в месяцах)
     start_date = end_date - pd.DateOffset(months=3)
-    logger.info(f"Временной интервал анализа: с {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')}")
+    logger.info(
+        f"Временной интервал анализа: с {start_date.strftime('%Y-%m-%d')} по {end_date.strftime('%Y-%m-%d')}"
+    )
 
     # 3. Подготовка данных
     df_temp = transactions.copy()
-    df_temp['Дата операции'] = pd.to_datetime(df_temp['Дата операции'], dayfirst=True, errors='coerce')
+    df_temp["Дата операции"] = pd.to_datetime(
+        df_temp["Дата операции"], dayfirst=True, errors="coerce"
+    )
 
     # 4. Фильтрация: диапазон дат, совпадение категории (без учета регистра) и только расходы (< 0)
     mask = (
-            (df_temp['Дата операции'] >= start_date) &
-            (df_temp['Дата операции'] <= end_date) &
-            (df_temp['Категория'].str.lower() == category.lower()) &
-            (df_temp['Сумма платежа'] < 0)
+        (df_temp["Дата операции"] >= start_date)
+        & (df_temp["Дата операции"] <= end_date)
+        & (df_temp["Категория"].str.lower() == category.lower())
+        & (df_temp["Сумма платежа"] < 0)
     )
 
     result_df = df_temp[mask]
@@ -227,6 +237,7 @@ def spending_by_category(transactions: pd.DataFrame,
 
     # Возвращаем отфильтрованный DataFrame (декоратор автоматически сохранит его в Excel)
     return result_df  # type: ignore
+
 
 # ==================================================
 # ЗАПУСК функции-декоратор   spending_by_category()
@@ -289,4 +300,3 @@ def spending_by_category(transactions: pd.DataFrame,
 #         print(f"❌ Ошибка! Директория для отчетов не существует по пути: {REPORTS_DIR}")
 #
 #     print("\n=== ПРОВЕРКА ДЕКОРАТОРА И ФУНКЦИИ УСПЕШНО ЗАВЕРШЕНА ===")
-
